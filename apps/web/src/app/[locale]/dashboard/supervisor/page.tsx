@@ -100,8 +100,14 @@ export default function SupervisorDashboard() {
     reason: '',
     flagType: 'SECURITY_CONCERN',
     severity: 'MEDIUM',
+    motherFullName: '',
+    dateOfBirth: '',
+    phoneNumber: '',
+    nationality: '',
+    notes: '',
   });
 
+  const [watchlistSearch, setWatchlistSearch] = useState('');
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
   const [assignmentAlgorithm, setAssignmentAlgorithm] = useState('round-robin');
   const [maxApplicationsPerOfficer, setMaxApplicationsPerOfficer] = useState(10);
@@ -138,8 +144,10 @@ export default function SupervisorDashboard() {
       }
 
       if (watchlistRes.ok) {
-        const watchlistData = await watchlistRes.json();
-        setWatchlist(watchlistData.filter((e: WatchlistEntry) => e.isActive));
+        const watchlistResult = await watchlistRes.json();
+        const watchlistData = watchlistResult.data || watchlistResult; // Handle both formats
+        console.log('Watchlist data received:', watchlistData);
+        setWatchlist(Array.isArray(watchlistData) ? watchlistData.filter((e: WatchlistEntry) => e.isActive) : []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -225,8 +233,23 @@ export default function SupervisorDashboard() {
 
   const handleAddWatchlistEntry = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!newEntry.nationalId || !newEntry.fullName || !newEntry.reason) {
+      alert('❌ Please fill in all required fields: National ID, Full Name, and Reason');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        alert('❌ Authentication required. Please login again.');
+        router.push('/en/login');
+        return;
+      }
+
+      console.log('Sending watchlist entry:', newEntry);
+
       const response = await fetch('http://localhost:3001/api/watchlist', {
         method: 'POST',
         headers: {
@@ -236,36 +259,76 @@ export default function SupervisorDashboard() {
         body: JSON.stringify(newEntry),
       });
 
-      if (response.ok) {
+      const result = await response.json();
+      console.log('Watchlist API response:', result);
+
+      if (response.ok && result.success) {
+        alert('✅ Watchlist entry added successfully!');
         setNewEntry({
           nationalId: '',
           fullName: '',
           reason: '',
           flagType: 'SECURITY_CONCERN',
           severity: 'MEDIUM',
+          motherFullName: '',
+          dateOfBirth: '',
+          phoneNumber: '',
+          nationality: '',
+          notes: '',
         });
         fetchData();
+      } else {
+        alert(`❌ Failed to add watchlist entry: ${result.error?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding watchlist entry:', error);
+      alert('❌ Error adding watchlist entry. Please check your connection and try again.');
     }
   };
 
   const handleRemoveWatchlistEntry = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this entry from the watchlist?')) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        alert('❌ Authentication required. Please login again.');
+        router.push('/en/login');
+        return;
+      }
+
       const response = await fetch(`http://localhost:3001/api/watchlist/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert('✅ Watchlist entry removed successfully!');
         fetchData();
+      } else {
+        alert(`❌ Failed to remove watchlist entry: ${result.error?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error removing watchlist entry:', error);
+      alert('❌ Error removing watchlist entry. Please check your connection and try again.');
     }
   };
+
+  // Filter watchlist based on search
+  const filteredWatchlist = watchlist.filter(entry => {
+    const searchLower = watchlistSearch.toLowerCase();
+    return (
+      entry.nationalId.toLowerCase().includes(searchLower) ||
+      entry.fullName.toLowerCase().includes(searchLower) ||
+      entry.reason.toLowerCase().includes(searchLower) ||
+      entry.flagType.toLowerCase().includes(searchLower) ||
+      entry.severity.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading || !data) {
     return (
@@ -523,14 +586,14 @@ export default function SupervisorDashboard() {
                 <form onSubmit={handleAddWatchlistEntry} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">National ID</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">National ID *</label>
                       <input type="text" required value={newEntry.nationalId}
                         onChange={(e) => setNewEntry({ ...newEntry, nationalId: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter National ID" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                       <input type="text" required value={newEntry.fullName}
                         onChange={(e) => setNewEntry({ ...newEntry, fullName: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -538,7 +601,7 @@ export default function SupervisorDashboard() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason *</label>
                     <textarea required value={newEntry.reason}
                       onChange={(e) => setNewEntry({ ...newEntry, reason: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -568,6 +631,47 @@ export default function SupervisorDashboard() {
                       </select>
                     </div>
                   </div>
+                  
+                  {/* Optional Fields Section */}
+                  <div className="border-t pt-4 mt-2">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Additional Information (Optional)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Mother's Full Name</label>
+                        <input type="text" value={newEntry.motherFullName}
+                          onChange={(e) => setNewEntry({ ...newEntry, motherFullName: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Optional" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Date of Birth</label>
+                        <input type="date" value={newEntry.dateOfBirth}
+                          onChange={(e) => setNewEntry({ ...newEntry, dateOfBirth: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
+                        <input type="tel" value={newEntry.phoneNumber}
+                          onChange={(e) => setNewEntry({ ...newEntry, phoneNumber: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="+964..." />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Nationality</label>
+                        <input type="text" value={newEntry.nationality}
+                          onChange={(e) => setNewEntry({ ...newEntry, nationality: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Optional" />
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Additional Notes</label>
+                      <textarea value={newEntry.notes}
+                        onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={2} placeholder="Any additional information..." />
+                    </div>
+                  </div>
                   <button type="submit"
                     className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                     Add to Watchlist
@@ -576,7 +680,26 @@ export default function SupervisorDashboard() {
               </div>
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div className="p-6 border-b border-gray-200">
-                  <h3 className="text-xl font-semibold text-gray-900">Active Watchlist ({watchlist.length} entries)</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900">Active Watchlist ({watchlist.length} entries)</h3>
+                    <button onClick={fetchData} 
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <RefreshCw size={16} />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      value={watchlistSearch}
+                      onChange={(e) => setWatchlistSearch(e.target.value)}
+                      placeholder="Search by National ID, Name, Reason, Flag Type, or Severity..."
+                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -591,29 +714,45 @@ export default function SupervisorDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {watchlist.map((entry) => (
-                        <tr key={entry.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{entry.nationalId}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{entry.fullName}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{entry.reason}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{entry.flagType}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              entry.severity === 'CRITICAL' ? 'bg-red-100 text-red-800' :
-                              entry.severity === 'HIGH' ? 'bg-orange-100 text-orange-800' :
-                              entry.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                            }`}>{entry.severity}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button onClick={() => handleRemoveWatchlistEntry(entry.id)}
-                              className="text-red-600 hover:text-red-900 flex items-center">
-                              <Trash2 size={16} className="mr-1" />Remove
-                            </button>
+                      {filteredWatchlist.length > 0 ? (
+                        filteredWatchlist.map((entry) => (
+                          <tr key={entry.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{entry.nationalId}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{entry.fullName}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{entry.reason}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{entry.flagType}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                entry.severity === 'CRITICAL' ? 'bg-red-100 text-red-800' :
+                                entry.severity === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                                entry.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                              }`}>{entry.severity}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <button onClick={() => handleRemoveWatchlistEntry(entry.id)}
+                                className="text-red-600 hover:text-red-900 flex items-center">
+                                <Trash2 size={16} className="mr-1" />Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center justify-center text-gray-500">
+                              <AlertTriangle size={48} className="mb-4 text-gray-400" />
+                              <p className="text-lg font-medium">
+                                {watchlistSearch ? 'No matching entries found' : 'No watchlist entries yet'}
+                              </p>
+                              <p className="text-sm mt-2">
+                                {watchlistSearch ? 'Try adjusting your search terms' : 'Add your first entry using the form above'}
+                              </p>
+                            </div>
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>

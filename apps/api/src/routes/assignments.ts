@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * POST /api/assignments/auto-assign

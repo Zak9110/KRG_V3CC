@@ -93,7 +93,18 @@ export default function ProfessionalDirectorDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/analytics/director-pro');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('http://localhost:3001/api/analytics/director-pro', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const result = await response.json();
       if (result.success) {
         setData(result.data);

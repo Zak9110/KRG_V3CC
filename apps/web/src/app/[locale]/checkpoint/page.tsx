@@ -84,10 +84,21 @@ export default function CheckpointScanner() {
       const applicationId = match[1];
 
       // Fetch application details
-      const response = await fetch(`http://localhost:3001/api/applications/${applicationId}`);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`http://localhost:3001/api/applications/${applicationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error || 'Failed to verify permit');
+        setError(data.error?.message || 'Failed to verify permit');
         setLoading(false);
         return;
       }
@@ -133,7 +144,73 @@ export default function CheckpointScanner() {
       setError('Please enter a reference number');
       return;
     }
-    await handleQRCodeScanned(`KRG-PERMIT-${manualCode.trim()}`);
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
+
+      // Find application by reference number using authenticated endpoint
+      const response = await fetch(`http://localhost:3001/api/applications/checkpoint/${manualCode.trim()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error?.message || 'Application not found');
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data) {
+        setError('Application not found');
+        setLoading(false);
+        return;
+      }
+
+      const app = data.data;
+
+      // Validate permit
+      if (app.status !== 'APPROVED' && app.status !== 'ACTIVE') {
+        setError(`Permit is not valid. Status: ${app.status}`);
+        setLoading(false);
+        return;
+      }
+
+      // Check expiry
+      const now = new Date();
+      const endDate = new Date(app.visitEndDate);
+      if (endDate < now) {
+        setError('Permit has expired');
+        setLoading(false);
+        return;
+      }
+
+      setPermit({
+        referenceNumber: app.referenceNumber,
+        fullName: app.fullName,
+        nationality: app.nationality,
+        visitPurpose: app.visitPurpose,
+        visitStartDate: app.visitStartDate,
+        visitEndDate: app.visitEndDate,
+        status: app.status
+      });
+
+    } catch (err) {
+      console.error('Manual entry error:', err);
+      setError('Failed to lookup application. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const recordEntry = async () => {
@@ -143,25 +220,43 @@ export default function CheckpointScanner() {
     setError('');
 
     try {
-      // Extract ID from QR code (stored in permit data)
-      const response = await fetch('http://localhost:3001/api/applications', {
-        method: 'GET',
-      });
-      const data = await response.json();
-      const app = data.applications.find(
-        (a: any) => a.referenceNumber === permit.referenceNumber
-      );
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
 
-      if (!app) {
+      // Get the full application data using the checkpoint endpoint
+      const response = await fetch(`http://localhost:3001/api/applications/checkpoint/${permit.referenceNumber}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error?.message || 'Application not found');
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data) {
         setError('Application not found');
         setLoading(false);
         return;
       }
 
+      const app = data.data;
+
       // Record entry
       const entryResponse = await fetch('http://localhost:3001/api/checkpoint/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           qrPayload: `KRG-PERMIT-${app.id}`,
           checkpointName,

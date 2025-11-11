@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import DigitalResidencyCard from '@/components/DigitalResidencyCard';
 
 export default function TrackPage() {
   const t = useTranslations('track');
@@ -88,36 +89,43 @@ export default function TrackPage() {
 
         {/* Application Details */}
         {application && (
-          <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-4">
-                <h2 className="text-2xl font-bold text-gray-900">{t('applicationDetails')}</h2>
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(application.status)}`}>
-                  {t(`statusLabels.${application.status}`)}
-                </span>
-              </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <h2 className="text-2xl font-bold text-gray-900">{t('applicationDetails')}</h2>
+                  <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(application.status)}`}>
+                    {t(`statusLabels.${application.status}`)}
+                  </span>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">{t('referenceNumber')}</p>
-                  <p className="font-semibold text-gray-900">{application.referenceNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">{t('fullName')}</p>
-                  <p className="font-semibold text-gray-900">{application.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">{t('visitPurpose')}</p>
-                  <p className="font-semibold text-gray-900">{application.visitPurpose}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">{t('submittedDate')}</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(application.createdAt).toLocaleDateString()}
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">{t('referenceNumber')}</p>
+                    <p className="font-semibold text-gray-900">{application.referenceNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">{t('fullName')}</p>
+                    <p className="font-semibold text-gray-900">{application.fullName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">{t('visitPurpose')}</p>
+                    <p className="font-semibold text-gray-900">{application.visitPurpose}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">{t('submittedDate')}</p>
+                    <p className="font-semibold text-gray-900">
+                      {new Date(application.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Digital Residency Card - Show only when APPROVED */}
+            {application.status === 'APPROVED' && (
+              <DigitalResidencyCard application={application} />
+            )}
           </div>
         )}
       </div>

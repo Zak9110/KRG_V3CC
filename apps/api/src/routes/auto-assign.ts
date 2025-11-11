@@ -1,8 +1,7 @@
 import express from 'express';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Auto-assignment configuration (in production, store in database)
 let autoAssignConfig = {

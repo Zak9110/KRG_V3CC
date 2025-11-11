@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 import { uploadDocument, validateFile } from '../services/storage';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Configure multer for memory storage
 const upload = multer({
@@ -53,7 +52,7 @@ router.post(
       }
 
       // Valid document types
-      const validTypes = ['NATIONAL_ID', 'PASSPORT', 'SUPPORTING_DOC', 'VISITOR_PHOTO'];
+      const validTypes = ['NATIONAL_ID', 'NATIONAL_ID_BACK', 'PASSPORT', 'SUPPORTING_DOC', 'VISITOR_PHOTO'];
       if (!validTypes.includes(documentType)) {
         res.status(400).json({
           success: false,

@@ -5,6 +5,33 @@ import { useRouter } from 'next/navigation';
 
 type Step = 'phone' | 'otp' | 'form' | 'success';
 
+// Iraqi Governorates
+const IRAQ_GOVERNORATES = [
+  'Baghdad',
+  'Basra',
+  'Nineveh',
+  'Dhi Qar',
+  'Al-Anbar',
+  'Babylon',
+  'Diyala',
+  'Karbala',
+  'Kirkuk',
+  'Maysan',
+  'Muthanna',
+  'Najaf',
+  'Qadisiyyah',
+  'Salah al-Din',
+  'Wasit'
+];
+
+// KRG Governorates
+const KRG_GOVERNORATES = [
+  'Erbil',
+  'Sulaymaniyah',
+  'Dohuk',
+  'Halabja'
+];
+
 export default function ApplyPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('phone');
@@ -20,6 +47,8 @@ export default function ApplyPage() {
   // Application form data
   const [formData, setFormData] = useState({
     fullName: '',
+    motherFullName: '',
+    gender: 'MALE',
     nationalId: '',
     email: '',
     dateOfBirth: '',
@@ -31,7 +60,9 @@ export default function ApplyPage() {
     visitEndDate: '',
     declaredAccommodation: '',
     nationalIdFile: null as File | null,
-    passportFile: null as File | null
+    nationalIdBackFile: null as File | null,
+    passportFile: null as File | null,
+    headshotFile: null as File | null
   });
 
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -130,9 +161,19 @@ export default function ApplyPage() {
   const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate national ID file
+    // Validate required files
+    if (!formData.headshotFile) {
+      alert('Please upload your headshot photo');
+      return;
+    }
+
     if (!formData.nationalIdFile) {
-      alert('Please upload your National ID photo');
+      alert('Please upload your National ID (front) photo');
+      return;
+    }
+
+    if (!formData.nationalIdBackFile) {
+      alert('Please upload your National ID (back) photo');
       return;
     }
 
@@ -145,6 +186,8 @@ export default function ApplyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: formData.fullName,
+          motherFullName: formData.motherFullName,
+          gender: formData.gender,
           nationalId: formData.nationalId,
           email: formData.email,
           dateOfBirth: formData.dateOfBirth,
@@ -169,7 +212,7 @@ export default function ApplyPage() {
 
       const applicationId = applicationData.data.id;
 
-      // Step 2: Upload National ID file
+      // Step 2: Upload National ID file (front)
       const nationalIdFormData = new FormData();
       nationalIdFormData.append('files', formData.nationalIdFile);
       nationalIdFormData.append('applicationId', applicationId);
@@ -180,7 +223,33 @@ export default function ApplyPage() {
         body: nationalIdFormData
       });
 
-      // Step 3: Upload Passport file (if provided)
+      // Step 3: Upload National ID back file (if provided)
+      if (formData.nationalIdBackFile) {
+        const nationalIdBackFormData = new FormData();
+        nationalIdBackFormData.append('files', formData.nationalIdBackFile);
+        nationalIdBackFormData.append('applicationId', applicationId);
+        nationalIdBackFormData.append('documentType', 'NATIONAL_ID_BACK');
+
+        await fetch('http://localhost:3001/api/upload', {
+          method: 'POST',
+          body: nationalIdBackFormData
+        });
+      }
+
+      // Step 4: Upload Headshot file (if provided)
+      if (formData.headshotFile) {
+        const headshotFormData = new FormData();
+        headshotFormData.append('files', formData.headshotFile);
+        headshotFormData.append('applicationId', applicationId);
+        headshotFormData.append('documentType', 'VISITOR_PHOTO');
+
+        await fetch('http://localhost:3001/api/upload', {
+          method: 'POST',
+          body: headshotFormData
+        });
+      }
+
+      // Step 5: Upload Passport file (if provided)
       if (formData.passportFile) {
         const passportFormData = new FormData();
         passportFormData.append('files', formData.passportFile);
@@ -386,6 +455,36 @@ export default function ApplyPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mother's Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="motherFullName"
+                    value={formData.motherFullName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter mother's full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender *
+                  </label>
+                  <select
+                    name="gender"
+                    required
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     National ID *
                   </label>
                   <input
@@ -396,20 +495,6 @@ export default function ApplyPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter national ID"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="your@email.com"
                   />
                 </div>
 
@@ -426,6 +511,20 @@ export default function ApplyPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="your@email.com"
+                  />
+                </div>
               </div>
             </div>
 
@@ -438,30 +537,36 @@ export default function ApplyPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Origin Governorate *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="originGovernorate"
                     required
                     value={formData.originGovernorate}
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Baghdad"
-                  />
+                  >
+                    <option value="">Select your governorate</option>
+                    {IRAQ_GOVERNORATES.map(gov => (
+                      <option key={gov} value={gov}>{gov}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Destination Governorate *
+                    Destination in KRG *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="destinationGovernorate"
                     required
                     value={formData.destinationGovernorate}
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Erbil"
-                  />
+                  >
+                    <option value="">Select destination</option>
+                    {KRG_GOVERNORATES.map(gov => (
+                      <option key={gov} value={gov}>{gov}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -519,15 +624,40 @@ export default function ApplyPage() {
                   </h3>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-blue-800">
-                      Please upload clear photos of your ID documents (JPEG, PNG, or PDF, max 5MB each)
+                      Please upload clear photos of your documents (JPEG, PNG, or PDF, max 5MB each)
                     </p>
                   </div>
 
                   <div className="space-y-4">
-                    {/* National ID Upload */}
+                    {/* Headshot Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        National ID Photo *
+                        📸 Headshot Photo *
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        required
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setFormData({ ...formData, headshotFile: file });
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {formData.headshotFile && (
+                        <p className="mt-2 text-sm text-green-600">
+                          ✅ {formData.headshotFile.name} ({(formData.headshotFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">Recent passport-style photo</p>
+                    </div>
+
+                    {/* National ID Front Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        🪪 National ID (Front) *
                       </label>
                       <input
                         type="file"
@@ -547,10 +677,34 @@ export default function ApplyPage() {
                       )}
                     </div>
 
+                    {/* National ID Back Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        🪪 National ID (Back) *
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        required
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setFormData({ ...formData, nationalIdBackFile: file });
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {formData.nationalIdBackFile && (
+                        <p className="mt-2 text-sm text-green-600">
+                          ✅ {formData.nationalIdBackFile.name} ({(formData.nationalIdBackFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                    </div>
+
                     {/* Passport Upload (Optional) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Passport Photo (Optional)
+                        📕 Passport Photo (Optional)
                       </label>
                       <input
                         type="file"

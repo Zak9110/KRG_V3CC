@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * GET /api/status/:referenceNumber
@@ -18,14 +17,29 @@ router.get('/:referenceNumber', async (req: Request, res: Response): Promise<voi
         id: true,
         referenceNumber: true,
         fullName: true,
+        motherFullName: true,
+        nationality: true,
+        nationalId: true,
+        dateOfBirth: true,
         status: true,
         visitPurpose: true,
         visitStartDate: true,
         visitEndDate: true,
+        destinationGovernorate: true,
         createdAt: true,
         approvalDate: true,
         rejectionDate: true,
-        permitExpiryDate: true
+        permitExpiryDate: true,
+        qrCode: true,
+        documents: {
+          where: {
+            documentType: 'VISITOR_PHOTO'
+          },
+          select: {
+            fileUrl: true
+          },
+          take: 1
+        }
       }
     });
 
@@ -37,12 +51,28 @@ router.get('/:referenceNumber', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    res.json({ success: true, data: application });
+    // Extract photo URL from documents
+    const photoUrl = (application as any).documents && (application as any).documents.length > 0 
+      ? (application as any).documents[0].fileUrl 
+      : undefined;
+
+    // Remove documents from response and add photoUrl
+    const { documents, ...applicationData } = application as any;
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...applicationData,
+        photoUrl
+      }
+    });
   } catch (error: any) {
     console.error('Get application error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
     res.status(500).json({
       success: false,
-      error: { message: 'Failed to fetch application' }
+      error: { message: 'Failed to fetch application', details: error.message }
     });
   }
 });

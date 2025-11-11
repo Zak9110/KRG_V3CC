@@ -24,8 +24,21 @@ export async function uploadDocument(
   applicationId: string,
   documentType: string
 ): Promise<{ url: string; path: string }> {
+  // If Supabase is not configured, use local mock storage for development
   if (!supabase) {
-    throw new Error('Supabase storage is not configured');
+    console.warn('⚠️  Using mock storage (Supabase not configured)');
+    const timestamp = Date.now();
+    const sanitizedFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filePath = `${applicationId}/${documentType}/${timestamp}_${sanitizedFileName}`;
+    
+    // Convert buffer to base64 data URL for inline display
+    const base64 = file.buffer.toString('base64');
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+    
+    return {
+      url: dataUrl,
+      path: filePath,
+    };
   }
   
   try {

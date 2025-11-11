@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@krg-visit/database';
+import { prisma } from '@krg-evisit/database';
+import { ApplicationStatus } from '@krg-evisit/shared-types';
 import { SMSService } from '../services/sms';
+import { verifyQRCode } from '../services/qr';
 
-const prisma = new PrismaClient();
 const router = Router();
 
 // Verify QR code and record entry/exit
 router.post('/verify', async (req: Request, res: Response) => {
   try {
-    const { qrPayload, checkpointId, checkpointName, action } = req.body;
+    const { qrPayload, checkpointName, logType } = req.body;
 
     // Verify QR signature
     const verificationResult = await verifyQRCode(qrPayload);
@@ -30,7 +31,7 @@ router.post('/verify', async (req: Request, res: Response) => {
       where: { id: applicationId },
       include: {
         entryExitLogs: {
-          orderBy: { timestamp: 'desc' },
+          orderBy: { recordedAt: 'desc' },
           take: 1
         }
       }
@@ -43,8 +44,8 @@ router.post('/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // Check if approved
-    if (application.status !== ApplicationStatus.APPROVED) {
+    // Check if approved or active
+    if (application.status !== 'APPROVED' && application.status !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
         error: {
@@ -54,95 +55,49 @@ router.post('/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // Check validity dates
+    // Check permit expiry
     const now = new Date();
-    if (!application.validFrom || !application.validUntil) {
+    if (application.permitExpiryDate && now > new Date(application.permitExpiryDate)) {
       return res.status(403).json({
         success: false,
-        error: { code: 'NO_VALIDITY', message: 'Permit validity not set' }
+        error: { code: 'PERMIT_EXPIRED', message: 'Permit has expired' }
       });
     }
 
-    if (now < new Date(application.validFrom) || now > new Date(application.validUntil)) {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'PERMIT_EXPIRED', message: 'Permit is not valid for current date' }
-      });
-    }
-
-    // Check internal watchlist
-    const watchlistEntry = await prisma.internalWatchlist.findFirst({
-      where: {
-        OR: [
-          { passportNumber: application.passportNumber },
-          { email: application.email }
-        ],
-        isActive: true
-      }
-    });
-
-    if (watchlistEntry) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'WATCHLIST_ALERT',
-          message: 'Person is on internal watchlist',
-          data: {
-            reason: watchlistEntry.reason,
-            flaggedBy: watchlistEntry.flaggedBy
-          }
-        }
-      });
-    }
-
-    // Determine new status based on action and current location
+    // Determine new status based on log type
     let newStatus = application.status;
-    let newLocation = application.currentLocation;
-
-    if (action === 'ENTRY') {
-      if (application.currentLocation === 'NOT_ENTERED') {
-        newStatus = ApplicationStatus.ENTERED;
-        newLocation = checkpointName;
-      } else if (application.currentLocation === 'EXITED') {
-        newStatus = ApplicationStatus.RE_ENTERED;
-        newLocation = checkpointName;
-      } else {
-        return res.status(400).json({
-          success: false,
-          error: { code: 'ALREADY_INSIDE', message: 'Visitor is already inside KRG' }
-        });
-      }
-    } else if (action === 'EXIT') {
-      if (application.currentLocation !== 'NOT_ENTERED' && application.currentLocation !== 'EXITED') {
-        newStatus = ApplicationStatus.EXITED;
-        newLocation = 'EXITED';
-      } else {
-        return res.status(400).json({
-          success: false,
-          error: { code: 'NOT_INSIDE', message: 'Visitor is not inside KRG' }
-        });
-      }
+    if (logType === 'ENTRY') {
+      newStatus = 'ACTIVE';
+    } else if (logType === 'EXIT') {
+      newStatus = 'COMPLETED';
     }
 
     // Record entry/exit log
     const entryExitLog = await prisma.entryExitLog.create({
       data: {
         applicationId,
-        checkpointId,
-        checkpointName,
-        action,
-        timestamp: new Date()
+        checkpointName: checkpointName || 'Checkpoint',
+        logType: logType,
+        recordedAt: new Date()
       }
     });
 
-    // Update application status and location
+    // Update application status
     const updatedApplication = await prisma.application.update({
       where: { id: applicationId },
       data: {
         status: newStatus,
-        currentLocation: newLocation
+        entryTimestamp: logType === 'ENTRY' ? new Date() : application.entryTimestamp,
+        exitTimestamp: logType === 'EXIT' ? new Date() : application.exitTimestamp
       }
     });
+
+    // Send SMS notification
+    await SMSService.sendEntryRecorded(
+      application.phoneNumber,
+      application.fullName,
+      checkpointName || 'Kurdistan Region'
+    );
 
     return res.json({
       success: true,
@@ -151,15 +106,11 @@ router.post('/verify', async (req: Request, res: Response) => {
           referenceNumber: updatedApplication.referenceNumber,
           fullName: updatedApplication.fullName,
           nationality: updatedApplication.nationality,
-          passportNumber: updatedApplication.passportNumber,
           visitPurpose: updatedApplication.visitPurpose,
-          validFrom: updatedApplication.validFrom,
-          validUntil: updatedApplication.validUntil,
-          currentLocation: updatedApplication.currentLocation,
           status: updatedApplication.status
         },
         entryExitLog,
-        message: `${action === 'ENTRY' ? 'Entry' : 'Exit'} recorded successfully`
+        message: `${logType === 'ENTRY' ? 'Entry' : 'Exit'} recorded successfully`
       }
     });
   } catch (error) {
@@ -174,24 +125,23 @@ router.post('/verify', async (req: Request, res: Response) => {
 // Get checkpoint logs (for checkpoint officers)
 router.get('/logs', async (req: Request, res: Response) => {
   try {
-    const { checkpointId, page = '1', limit = '50' } = req.query;
+    const { checkpointName, page = '1', limit = '50' } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    const where = checkpointId ? { checkpointId: checkpointId as string } : {};
+    const where = checkpointName ? { checkpointName: checkpointName as string } : {};
 
     const [logs, total] = await Promise.all([
       prisma.entryExitLog.findMany({
         where,
         skip,
         take: parseInt(limit as string),
-        orderBy: { timestamp: 'desc' },
+        orderBy: { recordedAt: 'desc' },
         include: {
           application: {
             select: {
               referenceNumber: true,
               fullName: true,
               nationality: true,
-              passportNumber: true,
               visitPurpose: true
             }
           }

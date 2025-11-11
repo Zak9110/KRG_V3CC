@@ -50,6 +50,8 @@ model Application {
   
   // Visitor Information
   fullName              String
+  motherFullName        String?
+  gender                String             @default("MALE") // MALE, FEMALE
   nationalId            String
   phoneNumber           String
   phoneVerified         Boolean            @default(false)
@@ -197,17 +199,23 @@ model AuditLog {
 }
 
 model InternalWatchlist {
-  id          String    @id @default(uuid())
-  nationalId  String
-  fullName    String
-  reason      String
-  flagType    String    // OVERSTAY, FRAUD, SECURITY_CONCERN, DUPLICATE
-  severity    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
-  isActive    Boolean   @default(true)
-  expiresAt   DateTime?
-  createdBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  nationalId     String
+  fullName       String
+  motherFullName String?
+  dateOfBirth    String?
+  phoneNumber    String?
+  nationality    String?
+  governorate    String?
+  reason         String
+  flagType       String    // OVERSTAY, FRAUD, SECURITY_CONCERN, DUPLICATE
+  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  notes          String?
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   
   @@index([nationalId])
   @@index([isActive])

@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 import crypto from 'crypto';
 import { SMSService } from '../services/sms';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * Generate a 6-digit OTP

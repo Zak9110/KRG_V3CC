@@ -12,10 +12,11 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       fullName,
+      motherFullName,
+      gender,
       nationality,
       passportNumber,
       dateOfBirth,
-      gender,
       email,
       phoneNumber,
       visitPurpose,
@@ -38,6 +39,8 @@ router.post('/', async (req: Request, res: Response) => {
       data: {
         referenceNumber,
         fullName,
+        motherFullName: motherFullName || null,
+        gender: gender || 'MALE',
         nationalId: req.body.nationalId || '',
         phoneNumber,
         email,
@@ -77,6 +80,38 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// Get application by reference number for checkpoint (authenticated)
+router.get('/checkpoint/:referenceNumber', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { referenceNumber } = req.params;
+
+    const application = await prisma.application.findUnique({
+      where: { referenceNumber },
+      include: {
+        documents: true,
+        assignedOfficer: { select: { fullName: true, email: true } },
+        approvedBy: { select: { fullName: true, email: true } },
+        rejectedBy: { select: { fullName: true, email: true } },
+        entryExitLogs: { orderBy: { recordedAt: 'desc' } }
+      }
+    });
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Application not found' }
+      });
+    }
+
+    return res.json({ success: true, data: application });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to retrieve application' }
+    });
+  }
+});
+
 // Get application by reference number (public)
 router.get('/track/:referenceNumber', async (req: Request, res: Response) => {
   try {
@@ -88,13 +123,13 @@ router.get('/track/:referenceNumber', async (req: Request, res: Response) => {
         referenceNumber: true,
         fullName: true,
         status: true,
-        applicationDate: true,
-        reviewedAt: true,
-        approvedAt: true,
-        rejectedAt: true,
+        createdAt: true,
+        approvalDate: true,
+        rejectionDate: true,
         rejectionReason: true,
-        validFrom: true,
-        validUntil: true
+        visitStartDate: true,
+        visitEndDate: true,
+        permitExpiryDate: true
       }
     });
 
@@ -127,10 +162,9 @@ router.get('/', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPER
         where,
         skip,
         take: parseInt(limit as string),
-        orderBy: { applicationDate: 'desc' },
+        orderBy: { createdAt: 'desc' },
         include: {
-          assignedTo: { select: { fullName: true, email: true } },
-          reviewedBy: { select: { fullName: true } },
+          assignedOfficer: { select: { fullName: true, email: true } },
           approvedBy: { select: { fullName: true } }
         }
       }),
@@ -164,11 +198,10 @@ router.get('/:id', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SU
       where: { id },
       include: {
         documents: true,
-        assignedTo: { select: { fullName: true, email: true } },
-        reviewedBy: { select: { fullName: true, email: true } },
+        assignedOfficer: { select: { fullName: true, email: true } },
         approvedBy: { select: { fullName: true, email: true } },
         rejectedBy: { select: { fullName: true, email: true } },
-        entryExitLogs: { orderBy: { timestamp: 'desc' } }
+        entryExitLogs: { orderBy: { recordedAt: 'desc' } }
       }
     });
 
@@ -192,13 +225,13 @@ router.get('/:id', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SU
 router.patch('/:id/assign', authMiddleware, roleMiddleware([UserRole.SUPERVISOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { assignedToId } = req.body;
+    const { officerId } = req.body;
 
     const application = await prisma.application.update({
       where: { id },
       data: {
-        assignedToId,
-        status: ApplicationStatus.ASSIGNED
+        assignedOfficerId: officerId,
+        status: 'ASSIGNED'
       }
     });
 
@@ -206,9 +239,8 @@ router.patch('/:id/assign', authMiddleware, roleMiddleware([UserRole.SUPERVISOR]
       data: {
         userId: req.user!.id,
         action: 'ASSIGN_APPLICATION',
-        entityType: 'APPLICATION',
-        entityId: id,
-        details: { assignedToId }
+        applicationId: id,
+        details: JSON.stringify({ officerId })
       }
     });
 
@@ -230,10 +262,8 @@ router.patch('/:id/review', authMiddleware, roleMiddleware([UserRole.OFFICER]), 
     const application = await prisma.application.update({
       where: { id },
       data: {
-        status: ApplicationStatus.UNDER_REVIEW,
-        reviewedById: req.user!.id,
-        reviewedAt: new Date(),
-        reviewNotes: notes
+        status: 'UNDER_REVIEW',
+        approvalNotes: notes
       }
     });
 
@@ -241,9 +271,8 @@ router.patch('/:id/review', authMiddleware, roleMiddleware([UserRole.OFFICER]), 
       data: {
         userId: req.user!.id,
         action: 'REVIEW_APPLICATION',
-        entityType: 'APPLICATION',
-        entityId: id,
-        details: { recommendation, notes }
+        applicationId: id,
+        details: JSON.stringify({ recommendation, notes })
       }
     });
 
@@ -256,11 +285,11 @@ router.patch('/:id/review', authMiddleware, roleMiddleware([UserRole.OFFICER]), 
   }
 });
 
-// Approve application (director)
-router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+// Approve application (officer/director)
+router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { validFrom, validUntil } = req.body;
+    const { notes } = req.body;
 
     // Generate QR code
     const qrData = await generateQRCode(id);
@@ -268,44 +297,49 @@ router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.DIRECTOR])
     const application = await prisma.application.update({
       where: { id },
       data: {
-        status: ApplicationStatus.APPROVED,
+        status: 'APPROVED',
         approvedById: req.user!.id,
-        approvedAt: new Date(),
-        validFrom: new Date(validFrom),
-        validUntil: new Date(validUntil),
+        approvalDate: new Date(),
+        approvalNotes: notes,
         qrCode: qrData.qrCode,
-        qrSignature: qrData.signature
+        qrCodeSignature: qrData.signature,
+        permitExpiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days validity
       },
       include: {
-        assignedTo: true,
-        reviewedBy: true
+        assignedOfficer: { select: { fullName: true, email: true } },
+        approvedBy: { select: { fullName: true } }
       }
     });
 
     // Send approval email with QR code
-    await sendEmail({
-      to: application.email,
-      subject: 'KRG e-Visit Application Approved',
-      html: `
-        <h2>Application Approved</h2>
-        <p>Dear ${application.fullName},</p>
-        <p>Your e-Visit application has been approved!</p>
-        <p><strong>Reference Number:</strong> ${application.referenceNumber}</p>
-        <p><strong>Valid From:</strong> ${new Date(validFrom).toLocaleDateString()}</p>
-        <p><strong>Valid Until:</strong> ${new Date(validUntil).toLocaleDateString()}</p>
-        <p>Your QR code is attached. Please present it at the checkpoint.</p>
-        <img src="${qrData.qrCode}" alt="QR Code" style="max-width: 300px;" />
-        <p>Thank you for using KRG e-Visit System.</p>
-      `
-    });
+    if (application.email) {
+      await sendEmail({
+        to: application.email,
+        subject: 'KRG e-Visit Application Approved',
+        html: `
+          <h2>Application Approved</h2>
+          <p>Dear ${application.fullName},</p>
+          <p>Your e-Visit application has been approved!</p>
+          <p><strong>Reference Number:</strong> ${application.referenceNumber}</p>
+          <p><strong>Visit Period:</strong> ${new Date(application.visitStartDate).toLocaleDateString()} - ${new Date(application.visitEndDate).toLocaleDateString()}</p>
+          <p><strong>Permit Valid Until:</strong> ${new Date(application.permitExpiryDate!).toLocaleDateString()}</p>
+          <p>Your digital residency card with QR code is available for download at: <a href="http://localhost:3000/en/track">Track Your Application</a></p>
+          <p>Please present your QR code at checkpoints when entering the Kurdistan Region.</p>
+          <img src="${qrData.qrCode}" alt="QR Code" style="max-width: 300px; margin: 20px 0;" />
+          <p>Thank you for using KRG e-Visit System.</p>
+        `
+      });
+    }
 
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
+        applicationId: id,
         action: 'APPROVE_APPLICATION',
-        entityType: 'APPLICATION',
-        entityId: id,
-        details: { validFrom, validUntil }
+        details: JSON.stringify({ 
+          qrGenerated: true,
+          permitExpiry: application.permitExpiryDate
+        })
       }
     });
 
@@ -319,8 +353,8 @@ router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.DIRECTOR])
   }
 });
 
-// Reject application (director)
-router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+// Reject application (officer/director)
+router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -328,35 +362,36 @@ router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.DIRECTOR]),
     const application = await prisma.application.update({
       where: { id },
       data: {
-        status: ApplicationStatus.REJECTED,
+        status: 'REJECTED',
         rejectedById: req.user!.id,
-        rejectedAt: new Date(),
+        rejectionDate: new Date(),
         rejectionReason: reason
       }
     });
 
     // Send rejection email
-    await sendEmail({
-      to: application.email,
-      subject: 'KRG e-Visit Application Rejected',
-      html: `
-        <h2>Application Rejected</h2>
-        <p>Dear ${application.fullName},</p>
-        <p>We regret to inform you that your e-Visit application has been rejected.</p>
-        <p><strong>Reference Number:</strong> ${application.referenceNumber}</p>
-        <p><strong>Reason:</strong> ${reason}</p>
-        <p>You may submit a new application with corrected information.</p>
-        <p>Thank you for using KRG e-Visit System.</p>
-      `
-    });
+    if (application.email) {
+      await sendEmail({
+        to: application.email,
+        subject: 'KRG e-Visit Application Rejected',
+        html: `
+          <h2>Application Rejected</h2>
+          <p>Dear ${application.fullName},</p>
+          <p>We regret to inform you that your e-Visit application has been rejected.</p>
+          <p><strong>Reference Number:</strong> ${application.referenceNumber}</p>
+          <p><strong>Reason:</strong> ${reason}</p>
+          <p>You may submit a new application with corrected information.</p>
+          <p>Thank you for using KRG e-Visit System.</p>
+        `
+      });
+    }
 
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
+        applicationId: id,
         action: 'REJECT_APPLICATION',
-        entityType: 'APPLICATION',
-        entityId: id,
-        details: { reason }
+        details: JSON.stringify({ reason })
       }
     });
 
@@ -365,6 +400,60 @@ router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.DIRECTOR]),
     return res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Failed to reject application' }
+    });
+  }
+});
+
+// Request additional documents (officer)
+router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { requestedDocuments, notes } = req.body;
+
+    const application = await prisma.application.update({
+      where: { id },
+      data: {
+        status: 'PENDING_DOCUMENTS',
+        approvalNotes: notes
+      }
+    });
+
+    // Send email to applicant requesting documents
+    if (application.email) {
+      await sendEmail({
+        to: application.email,
+        subject: 'KRG e-Visit: Additional Documents Required',
+        html: `
+          <h2>Additional Documents Required</h2>
+          <p>Dear ${application.fullName},</p>
+          <p>Your e-Visit application requires additional documentation before it can be processed.</p>
+          <p><strong>Reference Number:</strong> ${application.referenceNumber}</p>
+          <p><strong>Required Documents:</strong></p>
+          <ul>
+            ${requestedDocuments.split(',').map((doc: string) => `<li>${doc.trim()}</li>`).join('')}
+          </ul>
+          <p><strong>Notes:</strong> ${notes}</p>
+          <p>Please upload the requested documents at: <a href="http://localhost:3000/en/track">Track Your Application</a></p>
+          <p>Thank you for your cooperation.</p>
+        `
+      });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        applicationId: id,
+        action: 'REQUEST_DOCUMENTS',
+        details: JSON.stringify({ requestedDocuments, notes })
+      }
+    });
+
+    return res.json({ success: true, data: application });
+  } catch (error) {
+    console.error('Request documents error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to request documents' }
     });
   }
 });

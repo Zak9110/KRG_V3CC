@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@krg-evisit/database';
+import { prisma } from '@krg-evisit/database';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * GET /api/watchlist
@@ -38,8 +37,23 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nationalId, fullName, reason, flagType, severity, expiresAt, createdBy } = req.body;
+    const { 
+      nationalId, 
+      fullName, 
+      motherFullName,
+      dateOfBirth,
+      phoneNumber,
+      nationality,
+      governorate,
+      reason, 
+      flagType, 
+      severity, 
+      notes,
+      expiresAt, 
+      createdBy 
+    } = req.body;
 
+    // Validate required fields
     if (!nationalId || !fullName || !reason || !flagType) {
       res.status(400).json({
         success: false,
@@ -65,9 +79,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       data: {
         nationalId,
         fullName,
+        motherFullName: motherFullName || null,
+        dateOfBirth: dateOfBirth || null,
+        phoneNumber: phoneNumber || null,
+        nationality: nationality || null,
+        governorate: governorate || null,
         reason,
         flagType,
         severity: severity || 'MEDIUM',
+        notes: notes || null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         createdBy: createdBy || 'supervisor-1',
         isActive: true
@@ -77,9 +97,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, data: entry });
   } catch (error: any) {
     console.error('Add watchlist entry error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    });
     res.status(500).json({
       success: false,
-      error: { message: 'Failed to add watchlist entry' }
+      error: { 
+        message: 'Failed to add watchlist entry',
+        details: error.message 
+      }
     });
   }
 });
