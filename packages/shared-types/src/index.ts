@@ -52,7 +52,7 @@ export enum PriorityLevel {
 export interface Application {
   id: string;
   referenceNumber: string;
-  
+
   // Visitor Information
   fullName: string;
   nationalId: string;
@@ -60,6 +60,12 @@ export interface Application {
   email?: string;
   dateOfBirth: Date;
   nationality: string;
+
+  // Enhanced Visitor Profiling
+  occupation?: string;
+  educationLevel?: string;
+  monthlyIncome?: string;
+  previousVisits?: number;
   
   // Visit Details
   originGovernorate: string;
@@ -68,6 +74,11 @@ export interface Application {
   visitStartDate: Date;
   visitEndDate: Date;
   declaredAccommodation?: string;
+
+  // Economic Impact Tracking
+  estimatedStayDuration?: number;
+  accommodationType?: string;
+  dailySpending?: number;
   
   // Processing
   status: ApplicationStatus;
@@ -153,12 +164,24 @@ export interface ApplicationFormData {
   email?: string;
   dateOfBirth: string;
   nationality: string;
+
+  // Enhanced Visitor Profiling
+  occupation?: string;
+  educationLevel?: string;
+  monthlyIncome?: string;
+  previousVisits?: number;
+
+  // Visit Details
   originGovernorate: string;
   destinationGovernorate: string;
   visitPurpose: VisitPurpose;
   visitStartDate: string;
   visitEndDate: string;
   declaredAccommodation?: string;
+
+  // Economic Impact Tracking
+  accommodationType?: string;
+  dailySpending?: number;
 }
 
 export interface LoginCredentials {
@@ -218,5 +241,41 @@ export const VISIT_PURPOSES = [
   { value: 'FAMILY_VISIT', label: { en: 'Family Visit', ar: 'زيارة عائلية' } },
   { value: 'MEDICAL', label: { en: 'Medical', ar: 'طبي' } },
   { value: 'EDUCATION', label: { en: 'Education', ar: 'تعليم' } },
+  { value: 'OTHER', label: { en: 'Other', ar: 'أخرى' } }
+];
+
+export const OCCUPATIONS = [
+  { value: 'STUDENT', label: { en: 'Student', ar: 'طالب' } },
+  { value: 'BUSINESS', label: { en: 'Business Professional', ar: 'مهني أعمال' } },
+  { value: 'TOURISM', label: { en: 'Tourism/Hospitality', ar: 'سياحة/ضيافة' } },
+  { value: 'MEDICAL', label: { en: 'Medical Professional', ar: 'مهني طبي' } },
+  { value: 'ENGINEERING', label: { en: 'Engineering', ar: 'هندسة' } },
+  { value: 'TEACHING', label: { en: 'Teaching/Education', ar: 'تعليم' } },
+  { value: 'GOVERNMENT', label: { en: 'Government Employee', ar: 'موظف حكومي' } },
+  { value: 'OTHER', label: { en: 'Other', ar: 'أخرى' } }
+];
+
+export const EDUCATION_LEVELS = [
+  { value: 'PRIMARY', label: { en: 'Primary School', ar: 'مدرسة ابتدائية' } },
+  { value: 'SECONDARY', label: { en: 'Secondary School', ar: 'مدرسة ثانوية' } },
+  { value: 'UNIVERSITY', label: { en: 'University', ar: 'جامعة' } },
+  { value: 'POSTGRADUATE', label: { en: 'Postgraduate', ar: 'دراسات عليا' } },
+  { value: 'NONE', label: { en: 'No Formal Education', ar: 'لا تعليم رسمي' } }
+];
+
+export const INCOME_RANGES = [
+  { value: 'UNDER_500', label: { en: 'Under $500', ar: 'أقل من 500 دولار' } },
+  { value: '500_1000', label: { en: '$500 - $1,000', ar: '500 - 1000 دولار' } },
+  { value: '1000_2000', label: { en: '$1,000 - $2,000', ar: '1000 - 2000 دولار' } },
+  { value: '2000_5000', label: { en: '$2,000 - $5,000', ar: '2000 - 5000 دولار' } },
+  { value: 'OVER_5000', label: { en: 'Over $5,000', ar: 'أكثر من 5000 دولار' } },
+  { value: 'PREFER_NOT_SAY', label: { en: 'Prefer not to say', ar: 'أفضل عدم الإفصاح' } }
+];
+
+export const ACCOMMODATION_TYPES = [
+  { value: 'HOTEL', label: { en: 'Hotel/Resort', ar: 'فندق/منتجع' } },
+  { value: 'RENTAL', label: { en: 'Rental Apartment', ar: 'شقة مستأجرة' } },
+  { value: 'FAMILY_HOME', label: { en: 'Family/Friends Home', ar: 'منزل عائلة/أصدقاء' } },
+  { value: 'HOSTEL', label: { en: 'Hostel/Backpacker', ar: 'نزل/مضيف' } },
   { value: 'OTHER', label: { en: 'Other', ar: 'أخرى' } }
 ];

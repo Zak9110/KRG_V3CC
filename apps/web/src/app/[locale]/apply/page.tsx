@@ -53,12 +53,26 @@ export default function ApplyPage() {
     email: '',
     dateOfBirth: '',
     nationality: 'Iraq',
+
+    // Enhanced Visitor Profiling
+    occupation: '',
+    educationLevel: '',
+    monthlyIncome: '',
+    previousVisits: 0,
+
+    // Visit Details
     originGovernorate: '',
     destinationGovernorate: '',
     visitPurpose: 'TOURISM',
     visitStartDate: '',
     visitEndDate: '',
     declaredAccommodation: '',
+
+    // Economic Impact Tracking
+    accommodationType: '',
+    dailySpending: '',
+
+    // Files
     nationalIdFile: null as File | null,
     nationalIdBackFile: null as File | null,
     passportFile: null as File | null,
@@ -192,12 +206,25 @@ export default function ApplyPage() {
           email: formData.email,
           dateOfBirth: formData.dateOfBirth,
           nationality: formData.nationality,
+
+          // Enhanced Visitor Profiling
+          occupation: formData.occupation || undefined,
+          educationLevel: formData.educationLevel || undefined,
+          monthlyIncome: formData.monthlyIncome || undefined,
+          previousVisits: formData.previousVisits || 0,
+
+          // Visit Details
           originGovernorate: formData.originGovernorate,
           destinationGovernorate: formData.destinationGovernorate,
           visitPurpose: formData.visitPurpose,
           visitStartDate: formData.visitStartDate,
           visitEndDate: formData.visitEndDate,
           declaredAccommodation: formData.declaredAccommodation,
+
+          // Economic Impact Tracking
+          accommodationType: formData.accommodationType || undefined,
+          dailySpending: formData.dailySpending ? parseFloat(formData.dailySpending) : undefined,
+
           phoneNumber: verifiedPhone
         })
       });
@@ -525,6 +552,83 @@ export default function ApplyPage() {
                     placeholder="your@email.com"
                   />
                 </div>
+
+                {/* Enhanced Visitor Profiling */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Occupation (Optional)
+                  </label>
+                  <select
+                    name="occupation"
+                    value={formData.occupation}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select occupation</option>
+                    <option value="STUDENT">Student</option>
+                    <option value="BUSINESS">Business Professional</option>
+                    <option value="TOURISM">Tourism/Hospitality</option>
+                    <option value="MEDICAL">Medical Professional</option>
+                    <option value="ENGINEERING">Engineering</option>
+                    <option value="TEACHING">Teaching/Education</option>
+                    <option value="GOVERNMENT">Government Employee</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Education Level (Optional)
+                  </label>
+                  <select
+                    name="educationLevel"
+                    value={formData.educationLevel}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select education level</option>
+                    <option value="PRIMARY">Primary School</option>
+                    <option value="SECONDARY">Secondary School</option>
+                    <option value="UNIVERSITY">University</option>
+                    <option value="POSTGRADUATE">Postgraduate</option>
+                    <option value="NONE">No Formal Education</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Monthly Income (Optional)
+                  </label>
+                  <select
+                    name="monthlyIncome"
+                    value={formData.monthlyIncome}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select income range</option>
+                    <option value="UNDER_500">Under $500</option>
+                    <option value="500_1000">$500 - $1,000</option>
+                    <option value="1000_2000">$1,000 - $2,000</option>
+                    <option value="2000_5000">$2,000 - $5,000</option>
+                    <option value="OVER_5000">Over $5,000</option>
+                    <option value="PREFER_NOT_SAY">Prefer not to say</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Previous Visits to Kurdistan (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="previousVisits"
+                    min="0"
+                    value={formData.previousVisits}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 
@@ -615,6 +719,45 @@ export default function ApplyPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                </div>
+
+                {/* Economic Impact Tracking */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Accommodation Type (Optional)
+                  </label>
+                  <select
+                    name="accommodationType"
+                    value={formData.accommodationType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select accommodation type</option>
+                    <option value="HOTEL">Hotel/Resort</option>
+                    <option value="RENTAL">Rental Apartment</option>
+                    <option value="FAMILY_HOME">Family/Friends Home</option>
+                    <option value="HOSTEL">Hostel/Backpacker</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estimated Daily Spending (USD) (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="dailySpending"
+                    min="0"
+                    step="0.01"
+                    value={formData.dailySpending}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="50.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Approximate daily expenses for food, transport, activities, etc.
+                  </p>
                 </div>
 
                 {/* Document Upload Section */}

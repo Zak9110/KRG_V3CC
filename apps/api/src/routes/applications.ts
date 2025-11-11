@@ -15,25 +15,37 @@ router.post('/', async (req: Request, res: Response) => {
       motherFullName,
       gender,
       nationality,
-      passportNumber,
       dateOfBirth,
       email,
       phoneNumber,
+
+      // Enhanced Visitor Profiling
+      occupation,
+      educationLevel,
+      monthlyIncome,
+      previousVisits,
+
+      // Visit Details
+      originGovernorate,
+      destinationGovernorate,
       visitPurpose,
-      organizationName,
-      contactPersonName,
-      contactPersonPhone,
-      intendedEntryDate,
-      intendedExitDate,
-      accommodationAddress,
-      emergencyContactName,
-      emergencyContactPhone,
-      emergencyContactRelation
+      visitStartDate,
+      visitEndDate,
+      declaredAccommodation,
+
+      // Economic Impact Tracking
+      accommodationType,
+      dailySpending
     } = req.body;
 
     // Generate reference number
     const count = await prisma.application.count();
     const referenceNumber = `KRG-2025-${String(count + 1).padStart(6, '0')}`;
+
+    // Calculate stay duration
+    const start = new Date(visitStartDate);
+    const end = new Date(visitEndDate);
+    const stayDuration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
     const application = await prisma.application.create({
       data: {
@@ -46,12 +58,26 @@ router.post('/', async (req: Request, res: Response) => {
         email,
         dateOfBirth: new Date(dateOfBirth),
         nationality: nationality || 'Iraq',
-        originGovernorate: req.body.originGovernorate || '',
-        destinationGovernorate: req.body.destinationGovernorate || '',
+
+        // Enhanced Visitor Profiling
+        occupation: occupation || null,
+        educationLevel: educationLevel || null,
+        monthlyIncome: monthlyIncome || null,
+        previousVisits: previousVisits || 0,
+
+        // Visit Details
+        originGovernorate: originGovernorate || '',
+        destinationGovernorate: destinationGovernorate || '',
         visitPurpose,
-        visitStartDate: new Date(req.body.visitStartDate),
-        visitEndDate: new Date(req.body.visitEndDate),
-        declaredAccommodation: req.body.declaredAccommodation,
+        visitStartDate: new Date(visitStartDate),
+        visitEndDate: new Date(visitEndDate),
+        declaredAccommodation: declaredAccommodation || null,
+
+        // Economic Impact Tracking
+        estimatedStayDuration: stayDuration,
+        accommodationType: accommodationType || null,
+        dailySpending: dailySpending || null,
+
         status: 'SUBMITTED'
       }
     });

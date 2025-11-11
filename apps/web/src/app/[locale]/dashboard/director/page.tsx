@@ -5,10 +5,11 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area,
   Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { 
-  Menu, X, Download, Filter, TrendingUp, TrendingDown, Users, 
+import {
+  Menu, X, Download, Filter, TrendingUp, TrendingDown, Users,
   FileText, CheckCircle, XCircle, Clock, Activity, MapPin, Calendar,
-  User, Globe, Briefcase, Home, School, Heart, ChevronDown, RefreshCw
+  User, Globe, Briefcase, Home, School, Heart, ChevronDown, RefreshCw,
+  DollarSign
 } from 'lucide-react';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 
@@ -44,9 +45,18 @@ interface AnalyticsData {
     gender: { male: number; female: number };
     ageGroups: Record<string, number>;
     nationalities: { country: string; count: number; percentage: number }[];
+    occupations: { occupation: string; count: number; percentage: number }[];
+    educationLevels: { level: string; count: number; percentage: number }[];
+    incomeRanges: { range: string; count: number; percentage: number }[];
   };
   geographic: {
     originGovernorates: { name: string; count: number; percentage: number }[];
+  };
+  economic: {
+    totalEconomicImpact: number;
+    averageDailySpending: number;
+    accommodationTypes: { type: string; count: number; percentage: number }[];
+    spendingByPurpose: { purpose: string; totalSpending: number; avgSpendingPerApplication: number; applications: number }[];
   };
   purposes: Record<string, number>;
   officerPerformance: {
@@ -177,6 +187,7 @@ export default function ProfessionalDirectorDashboard() {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'demographics', label: 'Demographics', icon: Users },
+    { id: 'economic', label: 'Economic Impact', icon: DollarSign },
     { id: 'geographic', label: 'Geographic', icon: MapPin },
     { id: 'temporal', label: 'Trends', icon: Calendar },
     { id: 'purposes', label: 'Visit Purposes', icon: Briefcase },
@@ -429,9 +440,154 @@ export default function ProfessionalDirectorDashboard() {
           )}
 
           {/* Demographics Section */}
+          {activeSection === 'economic' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Economic Impact Analysis</h2>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                  <Download className="w-4 h-4 inline mr-2" />
+                  Export Report
+                </button>
+              </div>
+
+              {/* Economic Impact Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Economic Impact</p>
+                      <p className="text-2xl font-bold text-gray-900">${data.economic.totalEconomicImpact.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Activity className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Avg Daily Spending</p>
+                      <p className="text-2xl font-bold text-gray-900">${data.economic.averageDailySpending}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Home className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Economic Applications</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {data.economic.spendingByPurpose.reduce((sum, item) => sum + item.applications, 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Accommodation Types */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Accommodation Preferences</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={data.economic.accommodationTypes}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="count"
+                      >
+                        {data.economic.accommodationTypes.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Spending by Purpose */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Economic Impact by Visit Purpose</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={data.economic.spendingByPurpose}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="purpose" />
+                      <YAxis />
+                      <Tooltip
+                        formatter={(value, name) => [
+                          name === 'totalSpending' ? `$${value.toLocaleString()}` : value,
+                          name === 'totalSpending' ? 'Total Spending' : 'Avg per Application'
+                        ]}
+                      />
+                      <Bar dataKey="totalSpending" fill={COLORS.success} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Economic Impact Table */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">Detailed Economic Breakdown</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Visit Purpose
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Applications
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total Spending
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Avg per Application
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.economic.spendingByPurpose.map((item, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.purpose}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.applications}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${item.totalSpending.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${item.avgSpendingPerApplication}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'demographics' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+              {/* Basic Demographics Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Gender Distribution</h3>
                   <ResponsiveContainer width="100%" height={300}>
@@ -441,7 +597,7 @@ export default function ProfessionalDirectorDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         outerRadius={100}
                         dataKey="value"
                       >
@@ -468,6 +624,58 @@ export default function ProfessionalDirectorDashboard() {
                 </div>
               </div>
 
+              {/* Enhanced Demographics Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Occupations</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={data.demographics.occupations.slice(0, 5)} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="occupation" width={80} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill={COLORS.success} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Education Levels</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={data.demographics.educationLevels}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="count"
+                      >
+                        {data.demographics.educationLevels.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Income Ranges</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={data.demographics.incomeRanges.slice(0, 5)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="range" angle={-45} textAnchor="end" height={80} />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill={COLORS.warning} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Nationalities Table */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Top Nationalities</h3>
                 <div className="overflow-x-auto">
@@ -488,8 +696,8 @@ export default function ProfessionalDirectorDashboard() {
                           <td className="py-3 px-4 text-right">{nat.percentage}%</td>
                           <td className="py-3 px-4">
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
                                 style={{ width: `${nat.percentage}%` }}
                               />
                             </div>

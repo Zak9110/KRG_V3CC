@@ -547,6 +547,101 @@ router.get('/director-pro', async (req: any, res: Response) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
+    // Occupation breakdown
+    const occupationCounts: Record<string, number> = {};
+    allApplications.forEach(app => {
+      if (app.occupation) {
+        occupationCounts[app.occupation] = (occupationCounts[app.occupation] || 0) + 1;
+      }
+    });
+    const occupationStats = Object.entries(occupationCounts)
+      .map(([occupation, count]) => ({
+        occupation,
+        count,
+        percentage: Math.round((count / totalApplications) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Education level breakdown
+    const educationCounts: Record<string, number> = {};
+    allApplications.forEach(app => {
+      if (app.educationLevel) {
+        educationCounts[app.educationLevel] = (educationCounts[app.educationLevel] || 0) + 1;
+      }
+    });
+    const educationStats = Object.entries(educationCounts)
+      .map(([level, count]) => ({
+        level,
+        count,
+        percentage: Math.round((count / totalApplications) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Income range breakdown
+    const incomeCounts: Record<string, number> = {};
+    allApplications.forEach(app => {
+      if (app.monthlyIncome) {
+        incomeCounts[app.monthlyIncome] = (incomeCounts[app.monthlyIncome] || 0) + 1;
+      }
+    });
+    const incomeStats = Object.entries(incomeCounts)
+      .map(([range, count]) => ({
+        range,
+        count,
+        percentage: Math.round((count / totalApplications) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Economic Impact Analysis
+    const applicationsWithEconomicData = allApplications.filter(app =>
+      app.dailySpending !== null && app.dailySpending !== undefined &&
+      app.estimatedStayDuration !== null && app.estimatedStayDuration !== undefined &&
+      app.dailySpending > 0 && app.estimatedStayDuration > 0
+    );
+
+    const totalEconomicImpact = applicationsWithEconomicData.reduce((sum, app) => {
+      return sum + (app.dailySpending! * app.estimatedStayDuration!);
+    }, 0);
+
+    const avgDailySpending = applicationsWithEconomicData.length > 0
+      ? Math.round(applicationsWithEconomicData.reduce((sum, app) => sum + app.dailySpending!, 0) / applicationsWithEconomicData.length)
+      : 0;
+
+    // Accommodation type breakdown
+    const accommodationCounts: Record<string, number> = {};
+    allApplications.forEach(app => {
+      if (app.accommodationType) {
+        accommodationCounts[app.accommodationType] = (accommodationCounts[app.accommodationType] || 0) + 1;
+      }
+    });
+    const accommodationStats = Object.entries(accommodationCounts)
+      .map(([type, count]) => ({
+        type,
+        count,
+        percentage: Math.round((count / totalApplications) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Spending by purpose
+    const spendingByPurposeData: Record<string, { total: number, applications: number }> = {};
+    applicationsWithEconomicData.forEach(app => {
+      const purpose = app.visitPurpose;
+      if (!spendingByPurposeData[purpose]) {
+        spendingByPurposeData[purpose] = { total: 0, applications: 0 };
+      }
+      spendingByPurposeData[purpose].total += app.dailySpending! * app.estimatedStayDuration!;
+      spendingByPurposeData[purpose].applications += 1;
+    });
+    const spendingByPurpose = Object.entries(spendingByPurposeData)
+      .map(([purpose, data]) => ({
+        purpose,
+        totalSpending: data.total,
+        avgSpendingPerApplication: Math.round(data.total / data.applications),
+        applications: data.applications
+      }))
+      .sort((a, b) => b.totalSpending - a.totalSpending);
+
     // Geographic data (mock - replace with real data when available)
     const governorates = ['Erbil', 'Duhok', 'Sulaymaniyah', 'Halabja', 'Baghdad', 'Basra', 'Mosul', 'Kirkuk'];
     const originGovernorates = governorates.map(gov => ({
@@ -623,10 +718,19 @@ router.get('/director-pro', async (req: any, res: Response) => {
         demographics: {
           gender: { male: maleCount, female: femaleCount },
           ageGroups,
-          nationalities
+          nationalities,
+          occupations: occupationStats,
+          educationLevels: educationStats,
+          incomeRanges: incomeStats
         },
         geographic: {
           originGovernorates: originGovernorates.slice(0, 10)
+        },
+        economic: {
+          totalEconomicImpact: totalEconomicImpact,
+          averageDailySpending: avgDailySpending,
+          accommodationTypes: accommodationStats,
+          spendingByPurpose: spendingByPurpose
         },
         purposes,
         officerPerformance,
