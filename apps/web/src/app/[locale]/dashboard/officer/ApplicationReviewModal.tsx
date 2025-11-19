@@ -36,12 +36,14 @@ interface ApplicationReviewModalProps {
   application: Application
   onClose: () => void
   onUpdate: () => void
+  isSupervisor?: boolean
 }
 
 export default function ApplicationReviewModal({
   application,
   onClose,
-  onUpdate
+  onUpdate,
+  isSupervisor = false
 }: ApplicationReviewModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'documents' | 'security' | 'history'>('details')
   const [loading, setLoading] = useState(false)
@@ -78,7 +80,7 @@ export default function ApplicationReviewModal({
         return
       }
 
-      const url = `http://localhost:3001/api/applications/${application.id}/approve`
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/applications/${application.id}/approve`
       console.log('Sending PATCH request to:', url)
 
       const response = await fetch(url, {
@@ -137,7 +139,7 @@ export default function ApplicationReviewModal({
         return
       }
 
-      const url = `http://localhost:3001/api/applications/${application.id}/reject`
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/applications/${application.id}/reject`
       console.log('Sending PATCH request to:', url)
 
       const response = await fetch(url, {
@@ -213,7 +215,7 @@ export default function ApplicationReviewModal({
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch('http://localhost:3001/api/watchlist', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -249,7 +251,7 @@ export default function ApplicationReviewModal({
         return
       }
 
-      const response = await fetch(`http://localhost:3001/api/applications/${application.id}/request-documents`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${application.id}/request-documents`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

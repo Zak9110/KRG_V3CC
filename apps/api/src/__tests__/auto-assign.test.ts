@@ -4,29 +4,36 @@ import autoAssignRoutes from '../routes/auto-assign';
 
 // Mock Prisma
 jest.mock('@krg-evisit/database', () => {
+  const mockPrisma = {
+    user: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    application: {
+      count: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
   return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-      },
-      application: {
-        count: jest.fn(),
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-    })),
+    PrismaClient: jest.fn().mockImplementation(() => mockPrisma),
+    prisma: mockPrisma,
   };
 });
 
 describe('Auto-Assignment API', () => {
   let app: express.Application;
+  let prisma: any;
 
   beforeEach(() => {
     app = express();
     app.use(express.json());
     app.use('/api/auto-assign', autoAssignRoutes);
+
+    const { prisma: mockPrisma } = require('@krg-evisit/database');
+    prisma = mockPrisma as any;
   });
 
   afterEach(() => {
@@ -129,9 +136,7 @@ describe('Auto-Assignment API', () => {
         .put('/api/auto-assign/config')
         .send({ enabled: true });
 
-      const { PrismaClient } = require('@krg-evisit/database');
-      const prismaInstance = new PrismaClient();
-      (prismaInstance.application.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.application.findUnique as jest.Mock).mockResolvedValue(null);
 
       const response = await request(app)
         .post('/api/auto-assign/assign/non-existent-id');
@@ -147,9 +152,7 @@ describe('Auto-Assignment API', () => {
         .put('/api/auto-assign/config')
         .send({ enabled: true });
 
-      const { PrismaClient } = require('@krg-evisit/database');
-      const prismaInstance = new PrismaClient();
-      (prismaInstance.application.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.application.findUnique as jest.Mock).mockResolvedValue({
         id: 'test-app-id',
         assignedOfficerId: 'officer-id', // Already assigned
         status: 'UNDER_REVIEW',

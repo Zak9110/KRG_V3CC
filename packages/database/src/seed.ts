@@ -124,27 +124,33 @@ async function main() {
     console.log('⚠️ Watchlist entries may already exist');
   }
 
-  // Create sample application
-  const sampleApp = await prisma.application.create({
-    data: {
-      referenceNumber: 'KRG-2025-000001',
-      fullName: 'Ali Ahmed Hassan',
-      nationalId: '199001011234',
-      phoneNumber: '+9647501234567',
-      email: 'ali.ahmed@example.com',
-      dateOfBirth: new Date('1990-01-01'),
-      nationality: 'Iraq',
-      originGovernorate: 'Baghdad',
-      destinationGovernorate: 'Erbil',
-      visitPurpose: 'TOURISM',
-      visitStartDate: new Date('2025-12-01'),
-      visitEndDate: new Date('2025-12-15'),
-      declaredAccommodation: 'Erbil Rotana Hotel',
-      status: 'SUBMITTED',
-      priorityLevel: 'NORMAL',
-    },
-  });
-  console.log('✅ Sample application created:', sampleApp.referenceNumber);
+  // Create sample application (skip if already exists)
+  try {
+    const sampleApp = await prisma.application.upsert({
+      where: { referenceNumber: 'KRG-2025-000001' },
+      update: {},
+      create: {
+        referenceNumber: 'KRG-2025-000001',
+        fullName: 'Ali Ahmed Hassan',
+        nationalId: '199001011234',
+        phoneNumber: '+9647501234567',
+        email: 'ali.ahmed@example.com',
+        dateOfBirth: new Date('1990-01-01'),
+        nationality: 'Iraq',
+        originGovernorate: 'Baghdad',
+        destinationGovernorate: 'Erbil',
+        visitPurpose: 'TOURISM',
+        visitStartDate: new Date('2025-12-01'),
+        visitEndDate: new Date('2025-12-15'),
+        declaredAccommodation: 'Erbil Rotana Hotel',
+        status: 'SUBMITTED',
+        priorityLevel: 'NORMAL',
+      },
+    });
+    console.log('✅ Sample application created:', sampleApp.referenceNumber);
+  } catch (e) {
+    console.log('⚠️ Sample application may already exist');
+  }
 
   console.log('✅ Database seeded successfully!');
 }

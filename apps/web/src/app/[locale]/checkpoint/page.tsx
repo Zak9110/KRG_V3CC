@@ -91,7 +91,7 @@ export default function CheckpointScanner() {
         return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/applications/${applicationId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${applicationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -157,7 +157,7 @@ export default function CheckpointScanner() {
       }
 
       // Find application by reference number using authenticated endpoint
-      const response = await fetch(`http://localhost:3001/api/applications/checkpoint/${manualCode.trim()}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/checkpoint/${manualCode.trim()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -228,7 +228,7 @@ export default function CheckpointScanner() {
       }
 
       // Get the full application data using the checkpoint endpoint
-      const response = await fetch(`http://localhost:3001/api/applications/checkpoint/${permit.referenceNumber}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/checkpoint/${permit.referenceNumber}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -250,17 +250,17 @@ export default function CheckpointScanner() {
 
       const app = data.data;
 
-      // Record entry
-      const entryResponse = await fetch('http://localhost:3001/api/checkpoint/verify', {
+      // Record entry manually (since no QR code for manual entry)
+      const entryResponse = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/checkpoint/manual-entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          qrPayload: `KRG-PERMIT-${app.id}`,
+          referenceNumber: permit.referenceNumber,
           checkpointName,
-          action: 'ENTRY',
+          logType: 'ENTRY',
         }),
       });
 

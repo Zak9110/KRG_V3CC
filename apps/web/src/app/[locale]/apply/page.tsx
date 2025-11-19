@@ -1,990 +1,440 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
-type Step = 'phone' | 'otp' | 'form' | 'success';
+export default function ResidencyLandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
-// Iraqi Governorates
-const IRAQ_GOVERNORATES = [
-  'Baghdad',
-  'Basra',
-  'Nineveh',
-  'Dhi Qar',
-  'Al-Anbar',
-  'Babylon',
-  'Diyala',
-  'Karbala',
-  'Kirkuk',
-  'Maysan',
-  'Muthanna',
-  'Najaf',
-  'Qadisiyyah',
-  'Salah al-Din',
-  'Wasit'
-];
-
-// KRG Governorates
-const KRG_GOVERNORATES = [
-  'Erbil',
-  'Sulaymaniyah',
-  'Dohuk',
-  'Halabja'
-];
-
-export default function ApplyPage() {
-  const router = useRouter();
-  const [step, setStep] = useState<Step>('phone');
-  const [loading, setLoading] = useState(false);
-  
-  // Phone verification
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [countdown, setCountdown] = useState(0);
-  const [verifiedPhone, setVerifiedPhone] = useState('');
-  const [developmentOtp, setDevelopmentOtp] = useState(''); // For testing
-
-  // Application form data
-  const [formData, setFormData] = useState({
-    fullName: '',
-    motherFullName: '',
-    gender: 'MALE',
-    nationalId: '',
-    email: '',
-    dateOfBirth: '',
-    nationality: 'Iraq',
-
-    // Enhanced Visitor Profiling
-    occupation: '',
-    educationLevel: '',
-    monthlyIncome: '',
-    previousVisits: 0,
-
-    // Visit Details
-    originGovernorate: '',
-    destinationGovernorate: '',
-    visitPurpose: 'TOURISM',
-    visitStartDate: '',
-    visitEndDate: '',
-    declaredAccommodation: '',
-
-    // Economic Impact Tracking
-    accommodationType: '',
-    dailySpending: '',
-
-    // Files
-    nationalIdFile: null as File | null,
-    nationalIdBackFile: null as File | null,
-    passportFile: null as File | null,
-    headshotFile: null as File | null
-  });
-
-  const [referenceNumber, setReferenceNumber] = useState('');
-
-  // Countdown timer for resend OTP
+  // Track scroll position for back to top button
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  // Step 1: Send OTP
-  const handleSendOTP = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      alert('Please enter a valid phone number');
-      return;
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 500)
     }
 
-    setLoading(true);
-    try {
-      // Format phone number (add +964 if not present)
-      const formattedPhone = phoneNumber.startsWith('+964') 
-        ? phoneNumber 
-        : `+964${phoneNumber.replace(/^0/, '')}`;
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
-      const response = await fetch('http://localhost:3001/api/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formattedPhone,
-          purpose: 'APPLICATION'
-        })
-      });
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-      const data = await response.json();
-
-      if (data.success) {
-        setCountdown(60); // 60 seconds cooldown
-        setVerifiedPhone(formattedPhone);
-        
-        // In development, show the OTP code
-        if (data.data.code) {
-          setDevelopmentOtp(data.data.code);
-          alert(`✅ SMS sent! Development OTP: ${data.data.code}`);
-        } else {
-          alert('✅ Verification code sent to your phone!');
+  return (
+    <>
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
         }
-        
-        setStep('otp');
-      } else {
-        alert('Error: ' + (data.error?.message || 'Failed to send OTP'));
-      }
-    } catch (error) {
-      alert('Error sending OTP. Please check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Verify OTP
-  const handleVerifyOTP = async () => {
-    if (!otpCode || otpCode.length !== 6) {
-      alert('Please enter the 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:3001/api/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: verifiedPhone,
-          otpCode,
-          purpose: 'APPLICATION'
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert('✅ Phone verified successfully!');
-        setStep('form');
-      } else {
-        alert('❌ ' + (data.error?.message || 'Invalid or expired code'));
-      }
-    } catch (error) {
-      alert('Error verifying OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 3: Submit Application
-  const handleSubmitApplication = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate required files
-    if (!formData.headshotFile) {
-      alert('Please upload your headshot photo');
-      return;
-    }
-
-    if (!formData.nationalIdFile) {
-      alert('Please upload your National ID (front) photo');
-      return;
-    }
-
-    if (!formData.nationalIdBackFile) {
-      alert('Please upload your National ID (back) photo');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Step 1: Submit application data (without files)
-      const applicationResponse = await fetch('http://localhost:3001/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          motherFullName: formData.motherFullName,
-          gender: formData.gender,
-          nationalId: formData.nationalId,
-          email: formData.email,
-          dateOfBirth: formData.dateOfBirth,
-          nationality: formData.nationality,
-
-          // Enhanced Visitor Profiling
-          occupation: formData.occupation || undefined,
-          educationLevel: formData.educationLevel || undefined,
-          monthlyIncome: formData.monthlyIncome || undefined,
-          previousVisits: formData.previousVisits || 0,
-
-          // Visit Details
-          originGovernorate: formData.originGovernorate,
-          destinationGovernorate: formData.destinationGovernorate,
-          visitPurpose: formData.visitPurpose,
-          visitStartDate: formData.visitStartDate,
-          visitEndDate: formData.visitEndDate,
-          declaredAccommodation: formData.declaredAccommodation,
-
-          // Economic Impact Tracking
-          accommodationType: formData.accommodationType || undefined,
-          dailySpending: formData.dailySpending ? parseFloat(formData.dailySpending) : undefined,
-
-          phoneNumber: verifiedPhone
-        })
-      });
-
-      const applicationData = await applicationResponse.json();
-
-      if (!applicationData.success) {
-        alert('Error: ' + (applicationData.error?.message || 'Failed to submit application'));
-        setLoading(false);
-        return;
-      }
-
-      const applicationId = applicationData.data.id;
-
-      // Step 2: Upload National ID file (front)
-      const nationalIdFormData = new FormData();
-      nationalIdFormData.append('files', formData.nationalIdFile);
-      nationalIdFormData.append('applicationId', applicationId);
-      nationalIdFormData.append('documentType', 'NATIONAL_ID');
-
-      await fetch('http://localhost:3001/api/upload', {
-        method: 'POST',
-        body: nationalIdFormData
-      });
-
-      // Step 3: Upload National ID back file (if provided)
-      if (formData.nationalIdBackFile) {
-        const nationalIdBackFormData = new FormData();
-        nationalIdBackFormData.append('files', formData.nationalIdBackFile);
-        nationalIdBackFormData.append('applicationId', applicationId);
-        nationalIdBackFormData.append('documentType', 'NATIONAL_ID_BACK');
-
-        await fetch('http://localhost:3001/api/upload', {
-          method: 'POST',
-          body: nationalIdBackFormData
-        });
-      }
-
-      // Step 4: Upload Headshot file (if provided)
-      if (formData.headshotFile) {
-        const headshotFormData = new FormData();
-        headshotFormData.append('files', formData.headshotFile);
-        headshotFormData.append('applicationId', applicationId);
-        headshotFormData.append('documentType', 'VISITOR_PHOTO');
-
-        await fetch('http://localhost:3001/api/upload', {
-          method: 'POST',
-          body: headshotFormData
-        });
-      }
-
-      // Step 5: Upload Passport file (if provided)
-      if (formData.passportFile) {
-        const passportFormData = new FormData();
-        passportFormData.append('files', formData.passportFile);
-        passportFormData.append('applicationId', applicationId);
-        passportFormData.append('documentType', 'PASSPORT');
-
-        await fetch('http://localhost:3001/api/upload', {
-          method: 'POST',
-          body: passportFormData
-        });
-      }
-
-      // Success!
-      setReferenceNumber(applicationData.data.referenceNumber);
-      setStep('success');
-
-    } catch (error) {
-      alert('Error submitting application. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  // Render Phone Number Step
-  if (step === 'phone') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      `}</style>
+      <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-blue-900 to-blue-800 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
+                <svg className="w-8 h-8 text-blue-900" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
-              <p className="text-gray-600">Enter your phone number to receive a verification code</p>
+              <div>
+                <h1 className="text-xl font-bold">KRG e-Visit System</h1>
+                <p className="text-sm text-blue-100">Kurdistan Regional Government</p>
+              </div>
             </div>
 
-            {/* Phone Input */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-gray-500">+964</span>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="7501234567"
-                    className="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    maxLength={10}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Example: 7501234567 (without leading 0)
-                </p>
+            {/* Navigation */}
+            <nav className="hidden md:flex space-x-8">
+              <a href="#home" className="text-white hover:text-blue-200 transition">
+                Home
+              </a>
+              <a href="#features" className="text-white hover:text-blue-200 transition">
+                Features
+              </a>
+              <a href="#process" className="text-white hover:text-blue-200 transition">
+                Process
+              </a>
+              <Link href="/track" className="text-white hover:text-blue-200 transition">
+                Track Application
+              </Link>
+              <a href="#contact" className="text-white hover:text-blue-200 transition">
+                Contact
+              </a>
+            </nav>
+
+            {/* Mobile Menu Button & Language Switcher */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm">EN</span>
+                <span className="text-blue-300">|</span>
+                <span className="text-sm">العربية</span>
               </div>
 
+              {/* Mobile Menu Button */}
               <button
-                onClick={handleSendOTP}
-                disabled={loading || !phoneNumber}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden text-white hover:text-blue-200 transition"
               >
-                {loading ? 'Sending...' : 'Send Verification Code'}
-              </button>
-
-              <button
-                onClick={() => router.push('/')}
-                className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
-              >
-                Cancel
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  // Render OTP Verification Step
-  if (step === 'otp') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Enter Verification Code</h1>
-              <p className="text-gray-600">We sent a 6-digit code to</p>
-              <p className="text-blue-600 font-semibold">{verifiedPhone}</p>
-            </div>
-
-            {/* Development OTP Display */}
-            {developmentOtp && (
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-semibold text-yellow-800">🔧 Development Mode</p>
-                <p className="text-xs text-yellow-700 mt-1">Your OTP: <span className="font-mono font-bold text-lg">{developmentOtp}</span></p>
-              </div>
-            )}
-
-            {/* OTP Input */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  maxLength={6}
-                  className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <button
-                onClick={handleVerifyOTP}
-                disabled={loading || otpCode.length !== 6}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Verifying...' : 'Verify Code'}
-              </button>
-
-              {countdown > 0 ? (
-                <p className="text-center text-sm text-gray-500">
-                  Resend code in {countdown}s
-                </p>
-              ) : (
-                <button
-                  onClick={handleSendOTP}
-                  className="w-full text-blue-600 hover:text-blue-700 font-medium"
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden bg-blue-900 border-t border-blue-700">
+              <nav className="px-4 py-6 space-y-4">
+                <a
+                  href="#home"
+                  className="block text-white hover:text-blue-200 transition"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  Resend Code
-                </button>
-              )}
+                  Home
+                </a>
+                <a
+                  href="#features"
+                  className="block text-white hover:text-blue-200 transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Features
+                </a>
+                <a
+                  href="#process"
+                  className="block text-white hover:text-blue-200 transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Process
+                </a>
+                <Link
+                  href="/track"
+                  className="block text-white hover:text-blue-200 transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Track Application
+                </Link>
+                <a
+                  href="#contact"
+                  className="block text-white hover:text-blue-200 transition"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact
+                </a>
+              </nav>
+            </div>
+          )}
+        </div>
+      </header>
 
-              <button
-                onClick={() => {
-                  setStep('phone');
-                  setOtpCode('');
-                  setDevelopmentOtp('');
-                }}
-                className="w-full text-gray-600 hover:text-gray-700 font-medium"
+      {/* Hero Section */}
+      <section id="home" className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+              Apply for Kurdistan Residency Permit
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Fast, secure, and digital application process for visitors to the Kurdistan Region of Iraq
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/apply/form"
+                className="bg-blue-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 transition shadow-lg"
               >
-                ← Change Phone Number
-              </button>
+                Apply Now
+              </Link>
+              <Link
+                href="/track"
+                className="bg-white text-blue-900 px-8 py-4 rounded-lg font-semibold border-2 border-blue-900 hover:bg-blue-50 transition"
+              >
+                Track Application
+              </Link>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      </section>
 
-  // Render Application Form Step
-  if (step === 'form') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">e-Visit Application</h1>
-              <p className="text-gray-600">✅ Phone verified: {verifiedPhone}</p>
-            </div>
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Why Choose KRG e-Visit?
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Experience the future of immigration services with our digital platform
+            </p>
+          </div>
 
-            <form onSubmit={handleSubmitApplication} className="space-y-6">
-            {/* Personal Information */}
-            <div className="border-b pb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Personal Information</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    required
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mother's Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="motherFullName"
-                    value={formData.motherFullName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter mother's full name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Gender *
-                  </label>
-                  <select
-                    name="gender"
-                    required
-                    value={formData.gender}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    National ID *
-                  </label>
-                  <input
-                    type="text"
-                    name="nationalId"
-                    required
-                    value={formData.nationalId}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter national ID"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
-                  </label>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    required
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="your@email.com"
-                  />
-                </div>
-
-                {/* Enhanced Visitor Profiling */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Occupation (Optional)
-                  </label>
-                  <select
-                    name="occupation"
-                    value={formData.occupation}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select occupation</option>
-                    <option value="STUDENT">Student</option>
-                    <option value="BUSINESS">Business Professional</option>
-                    <option value="TOURISM">Tourism/Hospitality</option>
-                    <option value="MEDICAL">Medical Professional</option>
-                    <option value="ENGINEERING">Engineering</option>
-                    <option value="TEACHING">Teaching/Education</option>
-                    <option value="GOVERNMENT">Government Employee</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Education Level (Optional)
-                  </label>
-                  <select
-                    name="educationLevel"
-                    value={formData.educationLevel}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select education level</option>
-                    <option value="PRIMARY">Primary School</option>
-                    <option value="SECONDARY">Secondary School</option>
-                    <option value="UNIVERSITY">University</option>
-                    <option value="POSTGRADUATE">Postgraduate</option>
-                    <option value="NONE">No Formal Education</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monthly Income (Optional)
-                  </label>
-                  <select
-                    name="monthlyIncome"
-                    value={formData.monthlyIncome}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select income range</option>
-                    <option value="UNDER_500">Under $500</option>
-                    <option value="500_1000">$500 - $1,000</option>
-                    <option value="1000_2000">$1,000 - $2,000</option>
-                    <option value="2000_5000">$2,000 - $5,000</option>
-                    <option value="OVER_5000">Over $5,000</option>
-                    <option value="PREFER_NOT_SAY">Prefer not to say</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Previous Visits to Kurdistan (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    name="previousVisits"
-                    min="0"
-                    value={formData.previousVisits}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature Cards */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-xl border border-blue-200">
+              <div className="w-16 h-16 bg-blue-900 rounded-lg flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                Fast Processing
+              </h3>
+              <p className="text-gray-600">
+                Get your permit decision within 72 hours of submission
+              </p>
             </div>
 
-            {/* Visit Details */}
-            <div className="border-b pb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Visit Details</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Origin Governorate *
-                  </label>
-                  <select
-                    name="originGovernorate"
-                    required
-                    value={formData.originGovernorate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select your governorate</option>
-                    {IRAQ_GOVERNORATES.map(gov => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Destination in KRG *
-                  </label>
-                  <select
-                    name="destinationGovernorate"
-                    required
-                    value={formData.destinationGovernorate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select destination</option>
-                    {KRG_GOVERNORATES.map(gov => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit Purpose *
-                  </label>
-                  <select
-                    name="visitPurpose"
-                    required
-                    value={formData.visitPurpose}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="TOURISM">Tourism</option>
-                    <option value="BUSINESS">Business</option>
-                    <option value="FAMILY_VISIT">Family Visit</option>
-                    <option value="MEDICAL">Medical</option>
-                    <option value="EDUCATION">Education</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit Start Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="visitStartDate"
-                    required
-                    value={formData.visitStartDate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit End Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="visitEndDate"
-                    required
-                    value={formData.visitEndDate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Economic Impact Tracking */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Accommodation Type (Optional)
-                  </label>
-                  <select
-                    name="accommodationType"
-                    value={formData.accommodationType}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select accommodation type</option>
-                    <option value="HOTEL">Hotel/Resort</option>
-                    <option value="RENTAL">Rental Apartment</option>
-                    <option value="FAMILY_HOME">Family/Friends Home</option>
-                    <option value="HOSTEL">Hostel/Backpacker</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estimated Daily Spending (USD) (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    name="dailySpending"
-                    min="0"
-                    step="0.01"
-                    value={formData.dailySpending}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="50.00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Approximate daily expenses for food, transport, activities, etc.
-                  </p>
-                </div>
-
-                {/* Document Upload Section */}
-                <div className="md:col-span-2">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    📄 Required Documents
-                  </h3>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-800">
-                      Please upload clear photos of your documents (JPEG, PNG, or PDF, max 5MB each)
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Headshot Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        📸 Headshot Photo *
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        required
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setFormData({ ...formData, headshotFile: file });
-                          }
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {formData.headshotFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          ✅ {formData.headshotFile.name} ({(formData.headshotFile.size / 1024).toFixed(1)} KB)
-                        </p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500">Recent passport-style photo</p>
-                    </div>
-
-                    {/* National ID Front Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🪪 National ID (Front) *
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setFormData({ ...formData, nationalIdFile: file });
-                          }
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {formData.nationalIdFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          ✅ {formData.nationalIdFile.name} ({(formData.nationalIdFile.size / 1024).toFixed(1)} KB)
-                        </p>
-                      )}
-                    </div>
-
-                    {/* National ID Back Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🪪 National ID (Back) *
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        required
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setFormData({ ...formData, nationalIdBackFile: file });
-                          }
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {formData.nationalIdBackFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          ✅ {formData.nationalIdBackFile.name} ({(formData.nationalIdBackFile.size / 1024).toFixed(1)} KB)
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Passport Upload (Optional) */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        📕 Passport Photo (Optional)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setFormData({ ...formData, passportFile: file });
-                          }
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {formData.passportFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          ✅ {formData.passportFile.name} ({(formData.passportFile.size / 1024).toFixed(1)} KB)
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Declared Accommodation
-                  </label>
-                  <textarea
-                    name="declaredAccommodation"
-                    value={formData.declaredAccommodation}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Hotel name and address or host information"
-                  />
-                </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-xl border border-green-200">
+              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
               </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                Secure & Private
+              </h3>
+              <p className="text-gray-600">
+                Your data is protected with enterprise-grade security
+              </p>
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => router.push('/')}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
-              >
-                {loading ? 'Submitting...' : 'Submit Application'}
-              </button>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-8 rounded-xl border border-purple-200">
+              <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                24/7 Support
+              </h3>
+              <p className="text-gray-600">
+                Get help anytime through our support channels
+              </p>
             </div>
-          </form>
+          </div>
         </div>
-      </div>
-      </div>
-    );
-  }
+      </section>
 
-  // Render Success Step
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            {/* Success Icon */}
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
+      {/* Process Steps */}
+      <section id="process" className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Simple 4-Step Process
+            </h2>
+            <p className="text-xl text-gray-600">
+              Complete your application in just a few minutes
+            </p>
+          </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted!</h1>
-            <p className="text-gray-600 mb-6">Your e-Visit application has been received and is being processed.</p>
-
-            {/* Reference Number */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-8">
-              <p className="text-sm text-gray-600 mb-2">Your Reference Number</p>
-              <p className="text-3xl font-bold text-blue-600 tracking-wider">{referenceNumber}</p>
-              <p className="text-xs text-gray-500 mt-2">Save this number to track your application</p>
-            </div>
-
-            {/* SMS Notification */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
-              <p className="text-sm text-green-800">
-                📱 We've sent a confirmation SMS to <strong>{verifiedPhone}</strong>
-              </p>
-              <p className="text-xs text-green-700 mt-1">
-                You'll receive updates about your application via SMS
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                1
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Fill Application
+              </h3>
+              <p className="text-gray-600">
+                Provide your personal and visit information
               </p>
             </div>
 
-            {/* Next Steps */}
-            <div className="text-left mb-8">
-              <h2 className="font-bold text-gray-900 mb-4">What happens next?</h2>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 font-bold">1.</span>
-                  <span>Your application will be reviewed within 72 hours</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 font-bold">2.</span>
-                  <span>You'll receive SMS updates about your application status</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 font-bold">3.</span>
-                  <span>Once approved, download your QR code permit</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-blue-600 font-bold">4.</span>
-                  <span>Show the QR code at the checkpoint when entering Kurdistan</span>
-                </li>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                2
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Upload Documents
+              </h3>
+              <p className="text-gray-600">
+                Submit required documents securely
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                3
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Phone Verification
+              </h3>
+              <p className="text-gray-600">
+                Verify your phone number with OTP
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                4
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Track & Receive
+              </h3>
+              <p className="text-gray-600">
+                Track progress and receive your permit
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* News Section */}
+      <section id="news" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Latest Updates
+            </h2>
+            <p className="text-xl text-gray-600">
+              Stay informed about immigration services and announcements
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition">
+              <div className="h-48 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  New Digital Features
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  We've enhanced our platform with new security features and faster processing.
+                </p>
+                <div className="text-sm text-gray-500">
+                  November 2025
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition">
+              <div className="h-48 bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center">
+                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Processing Time Update
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Average processing time reduced to 48 hours for standard applications.
+                </p>
+                <div className="text-sm text-gray-500">
+                  November 2025
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition">
+              <div className="h-48 bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center">
+                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Mobile App Coming Soon
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Track your applications on-the-go with our new mobile application.
+                </p>
+                <div className="text-sm text-gray-500">
+                  December 2025
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer id="contact" className="bg-gradient-to-r from-gray-800 to-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-900" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">KRG e-Visit</h3>
+                  <p className="text-sm text-gray-300">Digital Immigration Services</p>
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm">
+                Official digital immigration platform of the Kurdistan Regional Government
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Services</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li><Link href="/apply/form" className="hover:text-white transition">Apply for Permit</Link></li>
+                <li><Link href="/track" className="hover:text-white transition">Track Application</Link></li>
+                <li><Link href="/renewal" className="hover:text-white transition">Permit Renewal</Link></li>
+                <li><Link href="/support" className="hover:text-white transition">Support Center</Link></li>
               </ul>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => router.push(`/track?ref=${referenceNumber}`)}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-              >
-                Track Application
-              </button>
-              <button
-                onClick={() => router.push('/')}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
-              >
-                Return Home
-              </button>
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
+              <div className="space-y-2 text-sm text-gray-300">
+                <p>Council of Ministers, 44001 Erbil</p>
+                <p>Kurdistan Region, Iraq</p>
+                <p>+964 750 123 4567</p>
+                <p>evisit@krg.gov.krd</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Follow Us</h4>
+              <div className="flex space-x-4">
+                <a href="#" className="text-gray-300 hover:text-white transition">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-300 hover:text-white transition">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/>
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  return null;
+          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
+            <p>&copy; 2025 Kurdistan Regional Government. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 bg-blue-900 text-white p-3 rounded-full shadow-lg hover:bg-blue-800 transition-all duration-300 z-50"
+          aria-label="Back to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
+    </div>
+    </>
+  )
 }

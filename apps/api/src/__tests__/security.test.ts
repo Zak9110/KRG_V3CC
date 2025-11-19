@@ -3,19 +3,22 @@ import { PrismaClient } from '@krg-evisit/database';
 
 // Mock Prisma
 jest.mock('@krg-evisit/database', () => {
+  const mockPrisma = {
+    internalWatchlist: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    application: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
   return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      internalWatchlist: {
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        updateMany: jest.fn(),
-      },
-      application: {
-        findFirst: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-      },
-    })),
+    PrismaClient: jest.fn().mockImplementation(() => mockPrisma),
+    prisma: mockPrisma,
   };
 });
 
@@ -23,7 +26,8 @@ describe('Security Service', () => {
   let prisma: jest.Mocked<PrismaClient>;
 
   beforeEach(() => {
-    prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
+    const { prisma: mockPrisma } = require('@krg-evisit/database');
+    prisma = mockPrisma as jest.Mocked<PrismaClient>;
     jest.clearAllMocks();
   });
 
@@ -253,8 +257,8 @@ describe('Security Service', () => {
         'Ahmad Hassan'
       );
 
-      expect(result.riskScore).toBe(70); // 30 (MEDIUM) + 40 (DUPLICATE)
-      expect(result.severity).toBe('HIGH');
+      expect(result.riskScore).toBe(100); // 30 (MEDIUM) + 40 (DUPLICATE) + 30 (SUSPICIOUS)
+      expect(result.severity).toBe('CRITICAL');
       expect(result.passed).toBe(false);
     });
 

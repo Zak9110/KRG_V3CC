@@ -2,6 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import applicationsRoutes from '../routes/applications';
 import { PrismaClient } from '@krg-evisit/database';
+import jwt from 'jsonwebtoken';
 
 // Mock Prisma
 jest.mock('@krg-evisit/database', () => {
@@ -45,6 +46,14 @@ jest.mock('../services/qr', () => ({
     signature: 'mockSignature',
   }),
 }));
+
+// Helper function to generate JWT token for testing
+const generateTestToken = (role: string = 'OFFICER') => {
+  return jwt.sign(
+    { id: 'test-user-id', email: 'test@example.com', role },
+    'your-secret-key'
+  );
+};
 
 describe('Applications API', () => {
   let app: express.Application;
@@ -206,7 +215,9 @@ describe('Applications API', () => {
 
       (prisma.application.findUnique as jest.Mock).mockResolvedValue(mockApplication);
 
-      const response = await request(app).get('/api/applications/1');
+      const response = await request(app)
+        .get('/api/applications/1')
+        .set('Authorization', `Bearer ${generateTestToken()}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -217,7 +228,9 @@ describe('Applications API', () => {
     it('should return 404 for non-existent application', async () => {
       (prisma.application.findUnique as jest.Mock).mockResolvedValue(null);
 
-      const response = await request(app).get('/api/applications/999');
+      const response = await request(app)
+        .get('/api/applications/999')
+        .set('Authorization', `Bearer ${generateTestToken()}`);
 
       expect(response.status).toBe(404);
       expect(response.body.success).toBe(false);
@@ -235,7 +248,9 @@ describe('Applications API', () => {
       (prisma.application.findMany as jest.Mock).mockResolvedValue(mockApplications);
       (prisma.application.count as jest.Mock).mockResolvedValue(2);
 
-      const response = await request(app).get('/api/applications');
+      const response = await request(app)
+        .get('/api/applications')
+        .set('Authorization', `Bearer ${generateTestToken()}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -254,6 +269,7 @@ describe('Applications API', () => {
 
       const response = await request(app)
         .get('/api/applications')
+        .set('Authorization', `Bearer ${generateTestToken()}`)
         .query({ status: 'APPROVED' });
 
       expect(response.status).toBe(200);
@@ -267,6 +283,7 @@ describe('Applications API', () => {
 
       const response = await request(app)
         .get('/api/applications')
+        .set('Authorization', `Bearer ${generateTestToken()}`)
         .query({ page: '2', limit: '10' });
 
       expect(response.status).toBe(200);
@@ -315,6 +332,7 @@ describe('Applications API', () => {
 
       const response = await request(app)
         .patch('/api/applications/1/approve')
+        .set('Authorization', `Bearer ${generateTestToken()}`)
         .send({ notes: 'Approved after review' });
 
       expect(response.status).toBe(200);
@@ -359,6 +377,7 @@ describe('Applications API', () => {
 
       const response = await request(app)
         .patch('/api/applications/1/reject')
+        .set('Authorization', `Bearer ${generateTestToken()}`)
         .send({ reason: 'Invalid documents' });
 
       expect(response.status).toBe(200);

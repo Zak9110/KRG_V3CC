@@ -141,6 +141,156 @@ router.get('/dashboard', authMiddleware, roleMiddleware([UserRole.DIRECTOR, User
   }
 });
 
+// Visitor status tracking (who is currently in region)
+router.get('/visitor-status', authMiddleware, roleMiddleware([UserRole.DIRECTOR, UserRole.SUPERVISOR, UserRole.OFFICER]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { checkpoint, nationality, limit = '50' } = req.query;
+
+    // Active visitors (currently inside region)
+    const activeVisitorsWhere: any = {
+      status: ApplicationStatus.ACTIVE
+    };
+
+    if (checkpoint) {
+      // Find applications that entered through specific checkpoint
+      const checkpointEntries = await prisma.entryExitLog.findMany({
+        where: {
+          checkpointName: checkpoint as string,
+          logType: 'ENTRY'
+        },
+        select: { applicationId: true }
+      });
+      const applicationIds = checkpointEntries.map(entry => entry.applicationId);
+      activeVisitorsWhere.id = { in: applicationIds };
+    }
+
+    if (nationality) {
+      activeVisitorsWhere.nationality = nationality as string;
+    }
+
+    const activeVisitors = await prisma.application.findMany({
+      where: activeVisitorsWhere,
+      include: {
+        entryExitLogs: {
+          where: { logType: 'ENTRY' },
+          orderBy: { recordedAt: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: parseInt(limit as string)
+    });
+
+    // Recent exits (last 24 hours)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const recentExits = await prisma.entryExitLog.findMany({
+      where: {
+        logType: 'EXIT',
+        recordedAt: { gte: yesterday }
+      },
+      include: {
+        application: {
+          select: {
+            referenceNumber: true,
+            fullName: true,
+            nationality: true,
+            visitPurpose: true
+          }
+        }
+      },
+      orderBy: { recordedAt: 'desc' },
+      take: 20
+    });
+
+    // Checkpoint activity summary
+    const checkpointActivity = await prisma.entryExitLog.groupBy({
+      by: ['checkpointName', 'logType'],
+      where: {
+        recordedAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        }
+      },
+      _count: true
+    });
+
+    // Overstay alerts (ACTIVE visitors past expiry date)
+    const now = new Date();
+    const overstayingVisitors = await prisma.application.findMany({
+      where: {
+        status: ApplicationStatus.ACTIVE,
+        permitExpiryDate: { lt: now }
+      },
+      select: {
+        id: true,
+        referenceNumber: true,
+        fullName: true,
+        permitExpiryDate: true,
+        entryExitLogs: {
+          where: { logType: 'ENTRY' },
+          orderBy: { recordedAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        activeVisitors: activeVisitors.map(visitor => ({
+          id: visitor.id,
+          referenceNumber: visitor.referenceNumber,
+          fullName: visitor.fullName,
+          nationality: visitor.nationality,
+          visitPurpose: visitor.visitPurpose,
+          entryDate: visitor.entryExitLogs[0]?.recordedAt,
+          checkpointName: visitor.entryExitLogs[0]?.checkpointName,
+          permitExpiryDate: visitor.permitExpiryDate
+        })),
+        recentExits: recentExits.map(exit => ({
+          id: exit.id,
+          referenceNumber: exit.application?.referenceNumber,
+          fullName: exit.application?.fullName,
+          nationality: exit.application?.nationality,
+          exitDate: exit.recordedAt,
+          checkpointName: exit.checkpointName
+        })),
+        checkpointActivity: checkpointActivity.reduce((acc, item) => {
+          if (!acc[item.checkpointName]) {
+            acc[item.checkpointName] = { entries: 0, exits: 0 };
+          }
+          if (item.logType === 'ENTRY') {
+            acc[item.checkpointName].entries = item._count;
+          } else {
+            acc[item.checkpointName].exits = item._count;
+          }
+          return acc;
+        }, {} as Record<string, { entries: number; exits: number }>),
+        overstayingVisitors: overstayingVisitors.map(visitor => ({
+          id: visitor.id,
+          referenceNumber: visitor.referenceNumber,
+          fullName: visitor.fullName,
+          daysOverstay: Math.floor((now.getTime() - (visitor.permitExpiryDate?.getTime() || 0)) / (1000 * 60 * 60 * 24)),
+          entryDate: visitor.entryExitLogs[0]?.recordedAt
+        })),
+        summary: {
+          totalActive: await prisma.application.count({ where: { status: ApplicationStatus.ACTIVE } }),
+          totalExited: await prisma.application.count({ where: { status: ApplicationStatus.EXITED } }),
+          overstaying: overstayingVisitors.length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Visitor status analytics error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to retrieve visitor status data' }
+    });
+  }
+});
+
 // Entry/Exit statistics
 router.get('/entry-exit', authMiddleware, roleMiddleware([UserRole.DIRECTOR, UserRole.SUPERVISOR]), async (req: AuthRequest, res: Response) => {
   try {

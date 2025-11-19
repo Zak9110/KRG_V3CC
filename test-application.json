@@ -1,0 +1,11 @@
+{
+  "fullName": "Test User",
+  "nationality": "Iraq",
+  "dateOfBirth": "1990-01-01",
+  "phoneNumber": "+9647501234567",
+  "originGovernorate": "Baghdad",
+  "destinationGovernorate": "Erbil",
+  "visitPurpose": "TOURISM",
+  "visitStartDate": "2025-12-01",
+  "visitEndDate": "2025-12-07"
+}

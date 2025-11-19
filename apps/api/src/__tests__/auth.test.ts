@@ -7,13 +7,16 @@ import jwt from 'jsonwebtoken';
 
 // Mock Prisma
 jest.mock('@krg-evisit/database', () => {
+  const mockPrisma = {
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
   return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-    })),
+    prisma: mockPrisma,
+    PrismaClient: jest.fn().mockImplementation(() => mockPrisma),
   };
 });
 
@@ -62,16 +65,16 @@ describe('Authentication API', () => {
       expect(response.body.data.user.role).toBe('OFFICER');
     });
 
-    it('should return 404 for non-existent user', async () => {
+    it('should return 401 for non-existent user', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
       const response = await request(app)
         .post('/api/auth/login')
         .send({ email: 'notfound@test.com', password: 'password123' });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('User not found');
+      expect(response.body.error.message).toContain('Invalid email or password');
     });
 
     it('should return 401 for incorrect password', async () => {
@@ -96,7 +99,7 @@ describe('Authentication API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Invalid password');
+      expect(response.body.error.message).toContain('Invalid email or password');
     });
 
     it('should return 403 for inactive user', async () => {
@@ -121,7 +124,7 @@ describe('Authentication API', () => {
 
       expect(response.status).toBe(403);
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Account is not active');
+      expect(response.body.error.message).toContain('Your account has been disabled');
     });
 
     it('should return 400 for missing credentials', async () => {
@@ -188,7 +191,7 @@ describe('Authentication API', () => {
 
       // Verify token structure (requires JWT_SECRET in env)
       const decoded = jwt.decode(token) as any;
-      expect(decoded).toHaveProperty('userId');
+      expect(decoded).toHaveProperty('id');
       expect(decoded).toHaveProperty('role');
       expect(decoded.role).toBe('OFFICER');
     });

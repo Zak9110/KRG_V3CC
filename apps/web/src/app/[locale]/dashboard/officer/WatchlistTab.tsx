@@ -55,7 +55,7 @@ export default function WatchlistTab() {
         return
       }
 
-      const response = await fetch('http://localhost:3001/api/watchlist?isActive=true', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/watchlist?isActive=true', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

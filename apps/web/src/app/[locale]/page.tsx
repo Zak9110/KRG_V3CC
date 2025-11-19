@@ -83,7 +83,7 @@ export default function HomePage() {
           </Link>
 
           {/* Supervisor Dashboard */}
-          <Link href="/dashboard/supervisor">
+          <Link href="/login?role=supervisor">
             <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-indigo-500">
               <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,16 +95,16 @@ export default function HomePage() {
                 {t('home.supervisorCard.description')}
               </p>
               <div className="flex items-center text-indigo-600 font-medium">
-                {t('home.supervisorCard.action')}
+                Login Required
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
               </div>
             </div>
           </Link>
 
           {/* Director Analytics */}
-          <Link href="/dashboard/director">
+          <Link href="/login?role=director">
             <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-pink-500">
               <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,9 +116,9 @@ export default function HomePage() {
                 {t('home.directorCard.description')}
               </p>
               <div className="flex items-center text-pink-600 font-medium">
-                {t('home.directorCard.action')}
+                Login Required
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
               </div>
             </div>

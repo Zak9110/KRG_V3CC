@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
@@ -11,6 +11,26 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get role from URL parameter
+  const roleParam = searchParams.get('role');
+  const [selectedRole, setSelectedRole] = useState<string>(roleParam || '');
+
+  // Set default credentials based on role
+  useEffect(() => {
+    if (roleParam) {
+      setSelectedRole(roleParam);
+      // Pre-fill email based on role for easier testing
+      if (roleParam === 'officer') {
+        setEmail('officer@test.com');
+      } else if (roleParam === 'supervisor') {
+        setEmail('supervisor@test.com');
+      } else if (roleParam === 'director') {
+        setEmail('director@test.com');
+      }
+    }
+  }, [roleParam]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,7 +38,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -65,6 +85,20 @@ export default function LoginPage() {
             </h1>
             <p className="text-gray-600">{t('subtitle')}</p>
           </div>
+
+          {/* Role Indicator */}
+          {selectedRole && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">
+                  Accessing {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Dashboard
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (

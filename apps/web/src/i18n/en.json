@@ -263,5 +263,88 @@
         "efficiency": "Efficiency"
       }
     }
+  },
+  "landing": {
+    "hero": {
+      "title": "Apply for Kurdistan Residency Permit",
+      "subtitle": "Fast, secure, and digital application process for visitors to the Kurdistan Region of Iraq",
+      "applyNow": "Apply Now",
+      "trackApplication": "Track Application"
+    },
+    "features": {
+      "title": "Why Choose KRG e-Visit?",
+      "subtitle": "Experience the future of immigration services with our digital platform",
+      "fastProcessing": {
+        "title": "Fast Processing",
+        "description": "Get your permit decision within 72 hours of submission"
+      },
+      "secure": {
+        "title": "Secure & Private",
+        "description": "Your data is protected with enterprise-grade security"
+      },
+      "support": {
+        "title": "24/7 Support",
+        "description": "Get help anytime through our support channels"
+      }
+    },
+    "process": {
+      "title": "Simple 4-Step Process",
+      "subtitle": "Complete your application in just a few minutes",
+      "step1": {
+        "title": "Fill Application",
+        "description": "Provide your personal and visit information"
+      },
+      "step2": {
+        "title": "Upload Documents",
+        "description": "Submit required documents securely"
+      },
+      "step3": {
+        "title": "Phone Verification",
+        "description": "Verify your phone number with OTP"
+      },
+      "step4": {
+        "title": "Track & Receive",
+        "description": "Track progress and receive your permit"
+      }
+    },
+    "news": {
+      "title": "Latest Updates",
+      "subtitle": "Stay informed about immigration services and announcements",
+      "item1": {
+        "title": "New Digital Features",
+        "description": "We've enhanced our platform with new security features and faster processing.",
+        "date": "November 2025"
+      },
+      "item2": {
+        "title": "Processing Time Update",
+        "description": "Average processing time reduced to 48 hours for standard applications.",
+        "date": "November 2025"
+      },
+      "item3": {
+        "title": "Mobile App Coming Soon",
+        "description": "Track your applications on-the-go with our new mobile application.",
+        "date": "December 2025"
+      }
+    },
+    "footer": {
+      "description": "Official digital immigration platform of the Kurdistan Regional Government",
+      "services": {
+        "title": "Services",
+        "apply": "Apply for Permit",
+        "track": "Track Application",
+        "renewal": "Permit Renewal",
+        "support": "Support Center"
+      },
+      "contact": {
+        "title": "Contact Us",
+        "address": "Council of Ministers, 44001 Erbil, Kurdistan Region, Iraq",
+        "phone": "+964 750 123 4567",
+        "email": "evisit@krg.gov.krd"
+      },
+      "follow": {
+        "title": "Follow Us"
+      },
+      "copyright": "All rights reserved."
+    }
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ApplicationReviewModal from '../officer/ApplicationReviewModal';
 import {
   Activity,
   Users,
@@ -75,7 +76,7 @@ interface WatchlistEntry {
   createdAt: string;
 }
 
-type Section = 'overview' | 'workload' | 'assignments' | 'watchlist' | 'settings';
+type Section = 'overview' | 'workload' | 'applications' | 'assignments' | 'watchlist' | 'settings';
 
 const STATUS_COLORS: Record<string, string> = {
   SUBMITTED: '#3b82f6',
@@ -112,9 +113,19 @@ export default function SupervisorDashboard() {
   const [assignmentAlgorithm, setAssignmentAlgorithm] = useState('round-robin');
   const [maxApplicationsPerOfficer, setMaxApplicationsPerOfficer] = useState(10);
 
+  // Applications review state
+  const [dailyApplications, setDailyApplications] = useState<any[]>([]);
+  const [applicationStats, setApplicationStats] = useState({
+    totalToday: 0,
+    pending: 0,
+    withDocuments: 0,
+    pendingDocuments: 0
+  });
+
   useEffect(() => {
     fetchData();
     fetchAutoAssignConfig();
+    fetchDailyApplications();
     const interval = autoRefresh ? setInterval(fetchData, 30000) : null;
     return () => {
       if (interval) clearInterval(interval);
@@ -130,10 +141,10 @@ export default function SupervisorDashboard() {
       }
 
       const [supervisorRes, watchlistRes] = await Promise.all([
-        fetch('http://localhost:3001/api/analytics/supervisor', {
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/analytics/supervisor', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:3001/api/watchlist', {
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/watchlist', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -161,7 +172,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:3001/api/auto-assign/config', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -178,12 +189,38 @@ export default function SupervisorDashboard() {
     }
   };
 
+  const fetchDailyApplications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/applications/supervisor/daily', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setDailyApplications(result.data);
+          setApplicationStats(result.summary || {
+            totalToday: 0,
+            pending: 0,
+            withDocuments: 0,
+            pendingDocuments: 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching daily applications:', error);
+    }
+  };
+
   const saveAutoAssignSettings = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:3001/api/auto-assign/config', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -212,7 +249,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:3001/api/auto-assign/trigger', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/trigger', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -250,7 +287,7 @@ export default function SupervisorDashboard() {
 
       console.log('Sending watchlist entry:', newEntry);
 
-      const response = await fetch('http://localhost:3001/api/watchlist', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/watchlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -299,7 +336,7 @@ export default function SupervisorDashboard() {
         return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/watchlist/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -366,6 +403,7 @@ export default function SupervisorDashboard() {
           {[
             { id: 'overview' as Section, icon: Activity, label: 'Overview' },
             { id: 'workload' as Section, icon: Users, label: 'Officer Workload' },
+            { id: 'applications' as Section, icon: UserCheck, label: 'Application Review' },
             { id: 'assignments' as Section, icon: FileText, label: 'Assignments' },
             { id: 'watchlist' as Section, icon: AlertTriangle, label: 'Watchlist' },
             { id: 'settings' as Section, icon: Settings, label: 'Settings' },
@@ -523,6 +561,15 @@ export default function SupervisorDashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Applications Review Section */}
+          {activeSection === 'applications' && (
+            <SupervisorApplicationsReview
+              applications={dailyApplications}
+              onRefresh={fetchDailyApplications}
+              loading={loading}
+            />
           )}
 
           {activeSection === 'assignments' && (
@@ -817,6 +864,367 @@ export default function SupervisorDashboard() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Supervisor Applications Review Component
+function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
+  applications: any[];
+  onRefresh: () => void;
+  loading: boolean;
+}) {
+  const [selectedApplications, setSelectedApplications] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+
+  const handleSelectAll = () => {
+    if (selectedApplications.size === applications.length) {
+      setSelectedApplications(new Set());
+    } else {
+      setSelectedApplications(new Set(applications.map(app => app.id)));
+    }
+  };
+
+  const handleSelectApp = (appId: string) => {
+    const newSelected = new Set(selectedApplications);
+    if (newSelected.has(appId)) {
+      newSelected.delete(appId);
+    } else {
+      newSelected.add(appId);
+    }
+    setSelectedApplications(newSelected);
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedApplications.size === 0) return;
+
+    setBulkActionLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const promises = Array.from(selectedApplications).map(appId =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${appId}/approve`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ notes: 'Approved by supervisor - daily batch review' })
+        })
+      );
+
+      const results = await Promise.allSettled(promises);
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failCount = results.length - successCount;
+
+      if (successCount > 0) {
+        alert(`Successfully approved ${successCount} application${successCount > 1 ? 's' : ''}`);
+      }
+      if (failCount > 0) {
+        alert(`Failed to approve ${failCount} application${failCount > 1 ? 's' : ''}`);
+      }
+
+      setSelectedApplications(new Set());
+      onRefresh();
+    } catch (error) {
+      console.error('Bulk approve error:', error);
+      alert('Failed to perform bulk approval');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      SUBMITTED: 'bg-blue-100 text-blue-800',
+      UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
+      APPROVED: 'bg-green-100 text-green-800',
+      REJECTED: 'bg-red-100 text-red-800',
+      PENDING_DOCUMENTS: 'bg-orange-100 text-orange-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Application Review</h2>
+          <p className="text-gray-600 mt-1">Review and approve today's applications</p>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm p-6 border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-700">Today's Total</p>
+              <p className="text-3xl font-bold text-blue-900 mt-2">{applications.length}</p>
+              <p className="text-xs text-blue-600 mt-1">Applications submitted</p>
+            </div>
+            <FileText className="w-8 h-8 text-blue-600" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl shadow-sm p-6 border border-yellow-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-yellow-700">Pending Review</p>
+              <p className="text-3xl font-bold text-yellow-900 mt-2">
+                {applications.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length}
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">Awaiting approval</p>
+            </div>
+            <Clock className="w-8 h-8 text-yellow-600" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm p-6 border border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-700">With Documents</p>
+              <p className="text-3xl font-bold text-green-900 mt-2">
+                {applications.filter(a => a.documents && a.documents.length > 0).length}
+              </p>
+              <p className="text-xs text-green-600 mt-1">Have uploaded files</p>
+            </div>
+            <UserCheck className="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-sm p-6 border border-orange-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-700">Pending Documents</p>
+              <p className="text-3xl font-bold text-orange-900 mt-2">
+                {applications.filter(a => a.status === 'PENDING_DOCUMENTS').length}
+              </p>
+              <p className="text-xs text-orange-600 mt-1">Additional docs needed</p>
+            </div>
+            <AlertTriangle className="w-8 h-8 text-orange-600" />
+          </div>
+        </div>
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedApplications.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <UserCheck className="w-5 h-5 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">
+              {selectedApplications.size} application{selectedApplications.size > 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleBulkApprove}
+              disabled={bulkActionLoading}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkActionLoading && <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              <UserCheck className="w-4 h-4" />
+              Approve Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Applications Table */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Today's Applications ({applications.length})
+            </h3>
+            {applications.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSelectAll}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {selectedApplications.size === applications.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600">Loading applications...</p>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="p-16 text-center text-gray-500">
+            <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No applications today</h3>
+            <p className="text-gray-600">No applications have been submitted today for review.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={selectedApplications.size === applications.length && applications.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documents</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Officer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {applications.map((app) => (
+                  <tr key={app.id} className={`hover:bg-gray-50 ${selectedApplications.has(app.id) ? 'bg-blue-50' : ''}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedApplications.has(app.id)}
+                        onChange={() => handleSelectApp(app.id)}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{app.fullName}</div>
+                        <div className="text-sm text-gray-500">{app.referenceNumber}</div>
+                        <div className="text-sm text-gray-500">{app.nationality}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
+                        {app.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium ${
+                          app.documents && app.documents.length > 0 ? 'text-green-600' : 'text-gray-500'
+                        }`}>
+                          {app.documents ? app.documents.length : 0} files
+                        </span>
+                        {app.documents && app.documents.length > 0 && (
+                          <UserCheck className="w-4 h-4 text-green-500" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {app.assignedOfficer?.fullName || 'Unassigned'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedApp(app)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs"
+                        >
+                          Review
+                        </button>
+                        {app.status === 'SUBMITTED' && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem('token');
+                                if (!token) return;
+
+                                try {
+                                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${app.id}/approve`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ notes: 'Approved by supervisor' })
+                                  });
+
+                                  if (response.ok) {
+                                    alert('Application approved successfully');
+                                    onRefresh();
+                                  } else {
+                                    alert('Failed to approve application');
+                                  }
+                                } catch (error) {
+                                  console.error('Approval error:', error);
+                                  alert('Failed to approve application');
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const reason = prompt('Enter rejection reason:');
+                                if (!reason) return;
+
+                                const token = localStorage.getItem('token');
+                                if (!token) return;
+
+                                try {
+                                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${app.id}/reject`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ reason })
+                                  });
+
+                                  if (response.ok) {
+                                    alert('Application rejected successfully');
+                                    onRefresh();
+                                  } else {
+                                    alert('Failed to reject application');
+                                  }
+                                } catch (error) {
+                                  console.error('Rejection error:', error);
+                                  alert('Failed to reject application');
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition text-xs"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Application Review Modal */}
+      {selectedApp && (
+        <ApplicationReviewModal
+          application={selectedApp}
+          onClose={() => setSelectedApp(null)}
+          onUpdate={onRefresh}
+          isSupervisor={true}
+        />
+      )}
     </div>
   );
 }

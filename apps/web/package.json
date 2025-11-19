@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo",
+    "dev:minimal": "NODE_OPTIONS='--max-old-space-size=2048' next dev",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
@@ -21,7 +24,8 @@
     "next-intl": "^4.5.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "recharts": "^3.3.0"
+    "recharts": "^3.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -38,6 +42,7 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "ts-jest": "^29.4.5",
+    "turbo": "^2.6.1",
     "typescript": "^5.5.0"
   }
 }

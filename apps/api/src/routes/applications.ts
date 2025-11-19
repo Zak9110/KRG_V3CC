@@ -4,6 +4,7 @@ import { authMiddleware, roleMiddleware, AuthRequest } from '../middleware/auth'
 import { ApplicationStatus, UserRole } from '@krg-evisit/shared-types';
 import { generateQRCode } from '../services/qr';
 import { sendEmail } from '../services/email';
+import { handleError, errors, asyncHandler } from '../utils/errorHandler';
 
 const router = Router();
 
@@ -191,7 +192,8 @@ router.get('/', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPER
         orderBy: { createdAt: 'desc' },
         include: {
           assignedOfficer: { select: { fullName: true, email: true } },
-          approvedBy: { select: { fullName: true } }
+          approvedBy: { select: { fullName: true } },
+          documents: true
         }
       }),
       prisma.application.count({ where })
@@ -311,8 +313,8 @@ router.patch('/:id/review', authMiddleware, roleMiddleware([UserRole.OFFICER]), 
   }
 });
 
-// Approve application (officer/director)
-router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+// Approve application (officer/supervisor/director)
+router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -379,8 +381,8 @@ router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, U
   }
 });
 
-// Reject application (officer/director)
-router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+// Reject application (officer/supervisor/director)
+router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -430,8 +432,8 @@ router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, Us
   }
 });
 
-// Request additional documents (officer)
-router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+// Request additional documents (officer/supervisor/director)
+router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { requestedDocuments, notes } = req.body;
@@ -480,6 +482,74 @@ router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.
     return res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Failed to request documents' }
+    });
+  }
+});
+
+// Get daily applications for supervisor review
+router.get('/supervisor/daily', authMiddleware, roleMiddleware([UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const where: any = {
+      createdAt: {
+        gte: today,
+        lt: tomorrow
+      }
+    };
+
+    // Add status filter if provided
+    if (status) {
+      where.status = status as ApplicationStatus;
+    } else {
+      // Default to pending applications for supervisor review
+      where.status = {
+        in: [ApplicationStatus.SUBMITTED, ApplicationStatus.UNDER_REVIEW, ApplicationStatus.PENDING_DOCUMENTS]
+      };
+    }
+
+    const [applications, total] = await Promise.all([
+      prisma.application.findMany({
+        where,
+        skip,
+        take: parseInt(limit as string),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          assignedOfficer: { select: { fullName: true, email: true } },
+          documents: true
+        }
+      }),
+      prisma.application.count({ where })
+    ]);
+
+    return res.json({
+      success: true,
+      data: applications,
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total,
+        pages: Math.ceil(total / parseInt(limit as string))
+      },
+      summary: {
+        totalToday: total,
+        pending: applications.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length,
+        withDocuments: applications.filter(a => a.documents && a.documents.length > 0).length,
+        pendingDocuments: applications.filter(a => a.status === 'PENDING_DOCUMENTS').length
+      }
+    });
+  } catch (error) {
+    console.error('Supervisor daily applications error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to retrieve daily applications' }
     });
   }
 });

@@ -10,11 +10,17 @@
     "dev": "concurrently \"pnpm --filter @krg-evisit/api dev\" \"pnpm --filter @krg-evisit/web dev\"",
     "dev:api": "pnpm --filter @krg-evisit/api dev",
     "dev:web": "pnpm --filter @krg-evisit/web dev",
+    "dev:web:fast": "pnpm --filter @krg-evisit/web dev:fast",
+    "dev:web:only": "pnpm --filter @krg-evisit/web dev",
     "build": "pnpm -r build",
+    "build:web": "pnpm --filter @krg-evisit/web build",
+    "build:analyze": "pnpm --filter @krg-evisit/web build:analyze",
     "db:generate": "pnpm --filter @krg-evisit/database prisma:generate",
     "db:push": "pnpm --filter @krg-evisit/database prisma:push",
     "db:studio": "pnpm --filter @krg-evisit/database prisma:studio",
-    "db:seed": "pnpm --filter @krg-evisit/database seed"
+    "db:seed": "pnpm --filter @krg-evisit/database seed",
+    "clean": "pnpm -r exec rm -rf node_modules .next .turbo",
+    "clean:install": "pnpm clean && pnpm install"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

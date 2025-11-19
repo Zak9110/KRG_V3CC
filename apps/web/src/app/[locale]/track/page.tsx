@@ -19,7 +19,7 @@ export default function TrackPage() {
     setApplication(null);
 
     try {
-      const response = await fetch(`http://localhost:3001/api/status/${referenceNumber}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/status/${referenceNumber}`);
       const result = await response.json();
 
       if (result.success) {
