@@ -13,51 +13,97 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       fullName,
-      motherFullName,
-      gender,
-      nationality,
-      dateOfBirth,
-      email,
+      nationalId,
       phoneNumber,
-
-      // Enhanced Visitor Profiling
-      occupation,
-      educationLevel,
-      monthlyIncome,
-      previousVisits,
-
-      // Visit Details
+      dateOfBirth,
       originGovernorate,
       destinationGovernorate,
       visitPurpose,
       visitStartDate,
       visitEndDate,
+      motherFullName,
+      gender,
+      nationality,
+      email,
+      occupation,
+      educationLevel,
+      monthlyIncome,
+      previousVisits,
       declaredAccommodation,
-
-      // Economic Impact Tracking
       accommodationType,
       dailySpending
     } = req.body;
+
+    // Validate required fields
+    const requiredFields = [
+      { field: 'fullName', value: fullName },
+      { field: 'nationalId', value: nationalId },
+      { field: 'phoneNumber', value: phoneNumber },
+      { field: 'dateOfBirth', value: dateOfBirth },
+      { field: 'originGovernorate', value: originGovernorate },
+      { field: 'destinationGovernorate', value: destinationGovernorate },
+      { field: 'visitPurpose', value: visitPurpose },
+      { field: 'visitStartDate', value: visitStartDate },
+      { field: 'visitEndDate', value: visitEndDate }
+    ];
+
+    const missingFields = requiredFields.filter(f => !f.value || f.value.trim() === '').map(f => f.field);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_FIELDS',
+          message: `Missing or empty required fields: ${missingFields.join(', ')}`
+        }
+      });
+    }
+
+    // Validate date formats
+    const startDate = new Date(visitStartDate);
+    const endDate = new Date(visitEndDate);
+    const birthDate = new Date(dateOfBirth);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || isNaN(birthDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_DATES',
+          message: 'Invalid date format. Use YYYY-MM-DD format.'
+        }
+      });
+    }
+
+    // Validate date logic
+    const now = new Date();
+    if (startDate <= now || endDate <= startDate) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_DATE_RANGE',
+          message: 'Visit start date must be in the future and end date must be after start date.'
+        }
+      });
+    }
 
     // Generate reference number
     const count = await prisma.application.count();
     const referenceNumber = `KRG-2025-${String(count + 1).padStart(6, '0')}`;
 
     // Calculate stay duration
-    const start = new Date(visitStartDate);
-    const end = new Date(visitEndDate);
-    const stayDuration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const stayDuration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
     const application = await prisma.application.create({
       data: {
         referenceNumber,
-        fullName,
-        motherFullName: motherFullName || null,
+        fullName: fullName.trim(),
+        motherFullName: motherFullName?.trim() || null,
         gender: gender || 'MALE',
-        nationalId: req.body.nationalId || '',
-        phoneNumber,
-        email,
-        dateOfBirth: new Date(dateOfBirth),
+        nationalId: nationalId.trim(),
+        phoneNumber: phoneNumber.trim(),
+        phoneVerified: false,
+        email: email?.trim() || null,
+        dateOfBirth: birthDate,
         nationality: nationality || 'Iraq',
 
         // Enhanced Visitor Profiling
@@ -67,35 +113,43 @@ router.post('/', async (req: Request, res: Response) => {
         previousVisits: previousVisits || 0,
 
         // Visit Details
-        originGovernorate: originGovernorate || '',
-        destinationGovernorate: destinationGovernorate || '',
-        visitPurpose,
-        visitStartDate: new Date(visitStartDate),
-        visitEndDate: new Date(visitEndDate),
-        declaredAccommodation: declaredAccommodation || null,
+        originGovernorate: originGovernorate.trim(),
+        destinationGovernorate: destinationGovernorate.trim(),
+        visitPurpose: visitPurpose.trim(),
+        visitStartDate: startDate,
+        visitEndDate: endDate,
+        declaredAccommodation: declaredAccommodation?.trim() || null,
 
         // Economic Impact Tracking
         estimatedStayDuration: stayDuration,
         accommodationType: accommodationType || null,
         dailySpending: dailySpending || null,
 
-        status: 'SUBMITTED'
+        status: 'SUBMITTED',
+        priorityLevel: 'NORMAL'
       }
     });
 
-    // Send confirmation email
-    await sendEmail({
-      to: email,
-      subject: 'KRG e-Visit Application Received',
-      html: `
-        <h2>Application Received</h2>
-        <p>Dear ${fullName},</p>
-        <p>Your e-Visit application has been received successfully.</p>
-        <p><strong>Reference Number:</strong> ${referenceNumber}</p>
-        <p>You can track your application status using this reference number.</p>
-        <p>Thank you for using KRG e-Visit System.</p>
-      `
-    });
+    // Send confirmation email (optional - don't fail if email service is not configured)
+    try {
+      if (email) {
+        await sendEmail({
+          to: email,
+          subject: 'KRG e-Visit Application Received',
+          html: `
+            <h2>Application Received</h2>
+            <p>Dear ${fullName},</p>
+            <p>Your e-Visit application has been received successfully.</p>
+            <p><strong>Reference Number:</strong> ${referenceNumber}</p>
+            <p>You can track your application status using this reference number.</p>
+            <p>Thank you for using KRG e-Visit System.</p>
+          `
+        });
+      }
+    } catch (emailError) {
+      // Log email error but don't fail the application creation
+      console.warn('Email sending failed, but application was created:', emailError);
+    }
 
     return res.status(201).json({ success: true, data: application });
   } catch (error) {

@@ -175,6 +175,62 @@ export default function ApplyFormPage() {
   const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate required fields
+    if (!formData.fullName.trim()) {
+      alert('Please enter your full name');
+      return;
+    }
+
+    if (!formData.nationalId.trim()) {
+      alert('Please enter your National ID number');
+      return;
+    }
+
+    if (!formData.dateOfBirth) {
+      alert('Please enter your date of birth');
+      return;
+    }
+
+    if (!formData.originGovernorate) {
+      alert('Please select your origin governorate');
+      return;
+    }
+
+    if (!formData.destinationGovernorate) {
+      alert('Please select your destination governorate');
+      return;
+    }
+
+    if (!formData.visitPurpose) {
+      alert('Please select your visit purpose');
+      return;
+    }
+
+    if (!formData.visitStartDate) {
+      alert('Please select your visit start date');
+      return;
+    }
+
+    if (!formData.visitEndDate) {
+      alert('Please select your visit end date');
+      return;
+    }
+
+    // Validate dates
+    const startDate = new Date(formData.visitStartDate);
+    const endDate = new Date(formData.visitEndDate);
+    const today = new Date();
+
+    if (startDate <= today) {
+      alert('Visit start date must be in the future');
+      return;
+    }
+
+    if (endDate <= startDate) {
+      alert('Visit end date must be after the start date');
+      return;
+    }
+
     // Validate required files
     if (!formData.headshotFile) {
       alert('Please upload your headshot photo');

@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+.pnpm-debug.log*
+.pnpm-debug.log
+
+# Production builds
+.next
+dist
+build
+
+# Environment files
+.env*
+!.env.example
+
+# Development files
+*.log
+*.tmp
+.cache
+.turbo
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Tests
+__tests__
+*.test.ts
+*.test.js
+jest.config.js
+
+# Database files (for production)
+apps/api/dev.db
+packages/database/prisma/dev.db
+
+# Railway specific
+.railway
+
+# Vercel specific
+.vercel

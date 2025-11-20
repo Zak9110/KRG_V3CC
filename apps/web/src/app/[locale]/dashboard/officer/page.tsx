@@ -1084,7 +1084,7 @@ export default function OfficerDashboard() {
                     className={`p-6 hover:bg-gray-50 cursor-pointer transition ${selectedApps.has(app.id) ? 'bg-blue-50' : ''}`}
                     onClick={(e) => {
                       // Don't open modal if clicking checkbox
-                      if ((e.target as HTMLElement).type === 'checkbox') return
+                      if ((e.target as HTMLInputElement).type === 'checkbox') return
                       setSelectedApp(app)
                     }}
                   >
