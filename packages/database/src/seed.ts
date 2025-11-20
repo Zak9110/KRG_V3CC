@@ -66,6 +66,21 @@ async function main() {
   });
   console.log('✅ Director user created:', director.email);
 
+  // Create Checkpoint Officer
+  const checkpointOfficerPassword = await bcrypt.hash('password123', 10);
+  const checkpointOfficer = await prisma.user.upsert({
+    where: { email: 'checkpoint@test.com' },
+    update: {},
+    create: {
+      email: 'checkpoint@test.com',
+      passwordHash: checkpointOfficerPassword,
+      fullName: 'Mustafa Karim',
+      role: 'CHECKPOINT_OFFICER',
+      isActive: true,
+    },
+  });
+  console.log('✅ Checkpoint Officer user created:', checkpointOfficer.email);
+
   // Create additional officers for workload testing
   const officer2Password = await bcrypt.hash('password123', 10);
   const officer2 = await prisma.user.upsert({

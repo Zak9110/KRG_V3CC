@@ -48,16 +48,22 @@ export default function AuthGuard({
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        if (allowedRoles.includes(userData.role)) {
+        const result = await response.json();
+        const userData = result.data || result; // Handle both { data: user } and direct user object
+        // Normalize role to lowercase for comparison
+        const userRole = userData.role?.toLowerCase();
+        const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase());
+        
+        if (normalizedAllowedRoles.includes(userRole)) {
           setIsAuthorized(true);
           if (provideUser) {
-            setUser(userData);
+            // Store normalized role in user object
+            setUser({ ...userData, role: userRole });
           }
         } else {
           router.push('/en/unauthorized');

@@ -544,7 +544,7 @@ function CheckpointScannerContent() {
 
 export default function CheckpointScanner() {
   return (
-    <AuthGuard allowedRoles={['officer', 'supervisor', 'director']}>
+    <AuthGuard allowedRoles={['officer', 'supervisor', 'director', 'checkpoint_officer']}>
       <CheckpointScannerContent />
     </AuthGuard>
   );
