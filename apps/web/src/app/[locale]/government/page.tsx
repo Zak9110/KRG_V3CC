@@ -1,12 +1,9 @@
 'use client';
 
-import {useTranslations} from 'next-intl';
 import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
 
 export default function GovernmentHubPage() {
-  const t = useTranslations();
-
   return (
     <AuthGuard>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -14,10 +11,10 @@ export default function GovernmentHubPage() {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            🏛️ {t('government.title', 'Government Portal')}
+            🏛️ Government Portal
           </h1>
           <p className="text-xl text-gray-600">
-            {t('government.subtitle', 'Authorized personnel access and management tools')}
+            Authorized personnel access and management tools
           </p>
         </div>
 

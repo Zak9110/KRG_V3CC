@@ -74,6 +74,12 @@ interface WatchlistEntry {
   severity: string;
   isActive: boolean;
   createdAt: string;
+  motherFullName?: string | null;
+  phoneNumber?: string | null;
+  nationality?: string | null;
+  governorate?: string | null;
+  notes?: string | null;
+  dateOfBirth?: string | null;
 }
 
 type Section = 'overview' | 'workload' | 'applications' | 'assignments' | 'watchlist' | 'settings';
