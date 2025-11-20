@@ -172,7 +172,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -194,7 +194,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/supervisor/daily', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/supervisor/daily`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -220,7 +220,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -249,7 +249,7 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/trigger', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/trigger`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -287,7 +287,7 @@ export default function SupervisorDashboard() {
 
       console.log('Sending watchlist entry:', newEntry);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

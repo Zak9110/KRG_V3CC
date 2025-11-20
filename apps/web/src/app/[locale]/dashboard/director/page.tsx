@@ -155,12 +155,12 @@ export default function ProfessionalDirectorDashboard() {
 
       // Fetch main analytics data
       const [analyticsResponse, visitorStatusResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/director-pro', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/director-pro`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/visitor-status', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/visitor-status`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
