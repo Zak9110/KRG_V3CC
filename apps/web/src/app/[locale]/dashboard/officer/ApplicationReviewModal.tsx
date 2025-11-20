@@ -187,7 +187,7 @@ export default function ApplicationReviewModal({
       }
 
       // Fetch all applications with the same national ID
-      const response = await fetch('http://localhost:3001/api/applications', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

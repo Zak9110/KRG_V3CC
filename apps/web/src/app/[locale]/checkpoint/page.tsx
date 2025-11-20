@@ -251,7 +251,7 @@ export default function CheckpointScanner() {
       const app = data.data;
 
       // Record entry manually (since no QR code for manual entry)
-      const entryResponse = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/checkpoint/manual-entry', {
+      const entryResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/checkpoint/manual-entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
