@@ -3,22 +3,32 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 interface AuthGuardProps {
-  children: React.ReactNode;
+  children: React.ReactNode | ((user: User) => React.ReactNode);
   allowedRoles?: string[];
   requireAuth?: boolean;
   redirectTo?: string;
+  provideUser?: boolean;
 }
 
 export default function AuthGuard({
   children,
-  allowedRoles = ['officer', 'supervisor', 'director'],
+  allowedRoles = ['officer', 'supervisor', 'director', 'checkpoint_officer'],
   requireAuth = true,
-  redirectTo = '/en/login'
+  redirectTo = '/en/login',
+  provideUser = false
 }: AuthGuardProps) {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (requireAuth) {
@@ -43,9 +53,12 @@ export default function AuthGuard({
       });
 
       if (response.ok) {
-        const user = await response.json();
-        if (allowedRoles.includes(user.role)) {
+        const userData = await response.json();
+        if (allowedRoles.includes(userData.role)) {
           setIsAuthorized(true);
+          if (provideUser) {
+            setUser(userData);
+          }
         } else {
           router.push('/en/unauthorized');
         }
@@ -73,6 +86,10 @@ export default function AuthGuard({
 
   if (!isAuthorized) {
     return null; // Will redirect
+  }
+
+  if (provideUser && user) {
+    return <>{typeof children === 'function' ? children(user) : children}</>;
   }
 
   return <>{children}</>;
