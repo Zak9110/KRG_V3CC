@@ -83,7 +83,7 @@ export default function HomePage() {
           </Link>
 
           {/* Supervisor Dashboard */}
-          <Link href="/login?role=supervisor">
+          <Link href="/login">
             <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-indigo-500">
               <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@ export default function HomePage() {
           </Link>
 
           {/* Director Analytics */}
-          <Link href="/login?role=director">
+          <Link href="/login">
             <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-pink-500">
               <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

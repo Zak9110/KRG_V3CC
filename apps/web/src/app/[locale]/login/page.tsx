@@ -4,6 +4,12 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+const STAFF_ROLES = [
+  { value: 'officer', label: 'Application Officer', email: 'officer@test.com' },
+  { value: 'supervisor', label: 'Supervisor', email: 'supervisor@test.com' },
+  { value: 'director', label: 'Director', email: 'director@test.com' }
+];
+
 export default function LoginPage() {
   const t = useTranslations('login');
   const [email, setEmail] = useState('');
@@ -13,7 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get role from URL parameter
+  // Get role from URL parameter (for backward compatibility)
   const roleParam = searchParams.get('role');
   const [selectedRole, setSelectedRole] = useState<string>(roleParam || '');
 
@@ -21,16 +27,23 @@ export default function LoginPage() {
   useEffect(() => {
     if (roleParam) {
       setSelectedRole(roleParam);
-      // Pre-fill email based on role for easier testing
-      if (roleParam === 'officer') {
-        setEmail('officer@test.com');
-      } else if (roleParam === 'supervisor') {
-        setEmail('supervisor@test.com');
-      } else if (roleParam === 'director') {
-        setEmail('director@test.com');
+      const roleData = STAFF_ROLES.find(r => r.value === roleParam);
+      if (roleData) {
+        setEmail(roleData.email);
       }
     }
   }, [roleParam]);
+
+  // Handle role selection
+  const handleRoleChange = (role: string) => {
+    setSelectedRole(role);
+    const roleData = STAFF_ROLES.find(r => r.value === role);
+    if (roleData) {
+      setEmail(roleData.email); // Pre-fill email for testing
+    } else {
+      setEmail(''); // Clear if no role selected
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -86,19 +99,26 @@ export default function LoginPage() {
             <p className="text-gray-600">{t('subtitle')}</p>
           </div>
 
-          {/* Role Indicator */}
-          {selectedRole && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-medium">
-                  Accessing {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Dashboard
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Role Selection */}
+          <div className="mb-6">
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+              Select Your Role
+            </label>
+            <select
+              id="role"
+              value={selectedRole}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            >
+              <option value="">Choose your role...</option>
+              {STAFF_ROLES.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Error Message */}
           {error && (
@@ -156,12 +176,15 @@ export default function LoginPage() {
           {/* Test Credentials Notice */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm font-medium text-blue-900 mb-2">
-              {t('testCredentials')}:
+              Test Credentials (select role above to auto-fill):
             </p>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Officer:</strong> officer@test.com / password123</p>
-              <p><strong>Supervisor:</strong> supervisor@test.com / password123</p>
-              <p><strong>Director:</strong> director@test.com / password123</p>
+            <div className="text-xs text-blue-700 space-y-2">
+              {STAFF_ROLES.map((role) => (
+                <div key={role.value} className="flex justify-between items-center">
+                  <span className="font-medium">{role.label}:</span>
+                  <span>{role.email} / password123</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
