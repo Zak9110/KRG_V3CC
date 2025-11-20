@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import AuthGuard from '@/components/AuthGuard';
 
 interface PermitDetails {
   referenceNumber: string;
@@ -13,7 +14,7 @@ interface PermitDetails {
   status: string;
 }
 
-export default function CheckpointScanner() {
+function CheckpointScannerContent() {
   const [scanning, setScanning] = useState(false);
   const [permit, setPermit] = useState<PermitDetails | null>(null);
   const [error, setError] = useState('');
@@ -538,5 +539,13 @@ export default function CheckpointScanner() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckpointScanner() {
+  return (
+    <AuthGuard allowedRoles={['officer', 'supervisor', 'director']}>
+      <CheckpointScannerContent />
+    </AuthGuard>
   );
 }

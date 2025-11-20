@@ -63,20 +63,40 @@ export default function GovernmentHubPage() {
             </div>
           </Link>
 
-          {/* Checkpoint Access */}
+          {/* Border Control - Checkpoint Access */}
           <Link href="/checkpoint">
-            <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-orange-500">
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-lg p-8 hover:shadow-xl transition cursor-pointer border-2 border-orange-200 hover:border-orange-400 relative">
+              <div className="absolute top-4 right-4 bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded-full">
+                SECURE
+              </div>
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Border Control</h2>
-              <p className="text-gray-600 mb-4">
-                Checkpoint scanning and permit verification tools
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Border Control Station</h2>
+              <p className="text-gray-600 mb-3">
+                Authorized checkpoint officers only. QR code scanning and permit verification for border entry.
               </p>
+              <div className="space-y-1 mb-4">
+                <div className="flex items-center text-xs text-gray-600">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  QR Code Scanner
+                </div>
+                <div className="flex items-center text-xs text-gray-600">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                  Manual Entry Verification
+                </div>
+                <div className="flex items-center text-xs text-gray-600">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                  Entry/Exit Logging
+                </div>
+              </div>
               <div className="flex items-center text-orange-600 font-medium">
-                Access Checkpoint
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Authorized Access Only
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -190,18 +210,64 @@ export default function GovernmentHubPage() {
           </Link>
         </div>
 
+        {/* Security Notice */}
+        <div className="mt-16 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl shadow-lg p-8 border border-red-200">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-red-900 mb-2">🔐 Authorized Personnel Only</h3>
+              <p className="text-red-800 mb-3">
+                This government portal contains sensitive immigration and border control information.
+                Access is restricted to authorized KRG personnel only.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center text-red-700">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  JWT Authentication Required
+                </div>
+                <div className="flex items-center text-red-700">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Role-Based Access Control
+                </div>
+                <div className="flex items-center text-red-700">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Audit Trail Logging
+                </div>
+                <div className="flex items-center text-red-700">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  24/7 Security Monitoring
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="mt-16 text-center">
+        <div className="mt-8 text-center">
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Government Portal</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Kurdistan Regional Government</h3>
             <p className="text-gray-600 mb-6">
-              Authorized access for Kurdistan Regional Government personnel only
+              Official e-Visit Immigration Management System
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-500">
               <span>🔒 Secure Access</span>
               <span>📊 Real-time Data</span>
               <span>⚡ Fast Processing</span>
               <span>🛡️ Role-based Security</span>
+              <span>📱 Mobile Ready</span>
+              <span>🌐 Multi-language</span>
             </div>
           </div>
         </div>
