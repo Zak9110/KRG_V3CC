@@ -106,7 +106,8 @@ export default function ApplyFormPage() {
         ? phoneNumber
         : `+964${phoneNumber.replace(/^0/, '')}`;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/otp/send`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,6 +115,20 @@ export default function ApplyFormPage() {
           purpose: 'APPLICATION'
         })
       });
+
+      if (!response.ok) {
+        // Handle HTTP errors
+        const errorData = await response.json().catch(() => ({ error: { message: `Server error: ${response.status}` } }));
+        
+        // Special handling for rate limit errors (429)
+        if (response.status === 429) {
+          const rateLimitMessage = errorData.error?.message || 'Please wait before requesting another code';
+          alert(t('errors.sendOtpFailed') + ': ' + rateLimitMessage);
+        } else {
+          alert(t('errors.sendOtpFailed') + ': ' + (errorData.error?.message || `Server error: ${response.status}`));
+        }
+        return;
+      }
 
       const data = await response.json();
 
@@ -130,11 +145,18 @@ export default function ApplyFormPage() {
         }
 
         setStep('otp');
-        } else {
-          alert(t('errors.sendOtpFailed') + ': ' + (data.error?.message || ''));
-        }
-    } catch (error) {
-      alert(t('errors.connectionError'));
+      } else {
+        alert(t('errors.sendOtpFailed') + ': ' + (data.error?.message || ''));
+      }
+    } catch (error: any) {
+      console.error('OTP send error:', error);
+      const errorMessage = error?.message || 'Connection error';
+      // Check if it's a network error
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        alert(t('errors.connectionError') + '\n\nMake sure the API server is running on http://localhost:3001');
+      } else {
+        alert(t('errors.connectionError') + ': ' + errorMessage);
+      }
     } finally {
       setLoading(false);
     }

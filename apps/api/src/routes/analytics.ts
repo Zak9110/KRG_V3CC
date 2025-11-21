@@ -982,18 +982,23 @@ router.get('/supervisor', async (req, res) => {
       }
     });
 
-    // Recent assignments (last 20)
+    // Recent assignments (last 20) - sorted by assignment date
     const recentAssignments = allApplications
       .filter(app => app.assignedOfficerId)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .sort((a, b) => {
+        // Sort by updatedAt (when assignment happened) or createdAt if updatedAt is same
+        const aTime = new Date(a.updatedAt || a.createdAt).getTime();
+        const bTime = new Date(b.updatedAt || b.createdAt).getTime();
+        return bTime - aTime;
+      })
       .slice(0, 20)
       .map(app => ({
         id: app.id,
         referenceNumber: app.referenceNumber,
         applicant: app.fullName,
-        officer: app.assignedOfficer?.fullName || 'Unknown',
+        officer: app.assignedOfficer?.fullName || 'Unassigned',
         status: app.status,
-        assignedAt: app.updatedAt,
+        assignedAt: app.updatedAt || app.createdAt,
         createdAt: app.createdAt
       }));
 

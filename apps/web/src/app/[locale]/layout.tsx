@@ -19,8 +19,8 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages} locale={validLocale} key={validLocale}>
-      <LanguageSwitcher />
-      {children}
-    </NextIntlClientProvider>
+          <LanguageSwitcher />
+          {children}
+        </NextIntlClientProvider>
   );
 }

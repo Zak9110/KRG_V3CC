@@ -43,7 +43,7 @@ export default function LoginPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   // Extract locale from pathname (e.g., /en/login -> 'en')
   const locale = pathname?.split('/')[1] || 'en';
 
@@ -211,12 +211,12 @@ export default function LoginPage() {
                     <h3 className="font-semibold text-gray-900">Role-Based Access</h3>
                     <p className="text-sm text-gray-600">Each role has access to specific tools and functions</p>
                   </div>
-                </div>
-                
+          </div>
+
                 <div className="flex items-start space-x-3">
                   <svg className="w-6 h-6 text-purple-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                </svg>
                   <div>
                     <h3 className="font-semibold text-gray-900">Audit Trail</h3>
                     <p className="text-sm text-gray-600">All actions are logged for compliance and security</p>
@@ -258,8 +258,8 @@ export default function LoginPage() {
                   <span className="text-green-600 font-semibold">● Operational</span>
                 </div>
               </div>
+              </div>
             </div>
-          </div>
 
           {/* Right Side - Login Form */}
           <div className="lg:sticky lg:top-8">
@@ -306,68 +306,68 @@ export default function LoginPage() {
                 </select>
               </div>
 
-              {/* Error Message */}
-              {error && (
+          {/* Error Message */}
+          {error && (
                 <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg flex items-start">
                   <svg className="w-5 h-5 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>{error}</span>
-                </div>
-              )}
+            </div>
+          )}
 
-              {/* Login Form */}
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Email Input */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Input */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     <span className="flex items-center">
                       <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                       Email Address
                     </span>
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    placeholder="your.email@krg-evisit.gov"
-                    disabled={loading}
-                  />
-                </div>
+                placeholder="your.email@krg-evisit.gov"
+                disabled={loading}
+              />
+            </div>
 
-                {/* Password Input */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            {/* Password Input */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                     <span className="flex items-center">
                       <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                       Password
                     </span>
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     placeholder="Enter your password"
-                    disabled={loading}
-                  />
-                </div>
+                disabled={loading}
+              />
+            </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={loading}
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center"
-                >
+            >
                   {loading ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -384,10 +384,10 @@ export default function LoginPage() {
                       Sign In to Portal
                     </>
                   )}
-                </button>
-              </form>
+            </button>
+          </form>
 
-              {/* Test Credentials Notice */}
+          {/* Test Credentials Notice */}
               <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
                 <div className="flex items-start">
                   <svg className="w-6 h-6 text-blue-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -396,7 +396,7 @@ export default function LoginPage() {
                   <div className="flex-1">
                     <p className="text-base font-bold text-blue-900 mb-3">
                       🔑 Test Credentials (Development Only)
-                    </p>
+            </p>
                     <div className="bg-white rounded-lg p-3 mb-3 border border-blue-200">
                       <p className="text-sm font-semibold text-gray-800 mb-1">Password for ALL accounts:</p>
                       <p className="text-lg font-mono font-bold text-blue-700 bg-blue-50 px-3 py-2 rounded border border-blue-300">
@@ -427,10 +427,10 @@ export default function LoginPage() {
                   </svg>
                   <span>This is a secure government portal. All access is logged and monitored.</span>
                 </div>
-              </div>
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Footer */}

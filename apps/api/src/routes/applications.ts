@@ -253,10 +253,25 @@ router.get('/track/:referenceNumber', async (req: Request, res: Response) => {
 // Get all applications (officer/supervisor/director)
 router.get('/', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
-    const { status, page = '1', limit = '20' } = req.query;
+    const { status, page = '1', limit = '100' } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    const where = status ? { status: status as ApplicationStatus } : {};
+    // Build where clause based on user role
+    const where: any = {};
+    
+    // Officers only see their assigned applications
+    // Supervisors and Directors see all applications
+    if (req.user?.role === UserRole.OFFICER) {
+      where.assignedOfficerId = req.user.id;
+    }
+    
+    // Add status filter if provided
+    if (status) {
+      where.status = status as ApplicationStatus;
+    }
+    
+    // For supervisors, if no status filter, show all applications (not just pending)
+    // This allows supervisor to see all applications in the review section
 
     const [applications, total] = await Promise.all([
       prisma.application.findMany({
@@ -265,9 +280,18 @@ router.get('/', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPER
         take: parseInt(limit as string),
         orderBy: { createdAt: 'desc' },
         include: {
-          assignedOfficer: { select: { fullName: true, email: true } },
-          approvedBy: { select: { fullName: true } },
-          documents: true
+          assignedOfficer: { select: { id: true, fullName: true, email: true } },
+          approvedBy: { select: { id: true, fullName: true, email: true } },
+          rejectedBy: { select: { id: true, fullName: true, email: true } },
+          documents: {
+            select: {
+              id: true,
+              documentType: true,
+              fileName: true,
+              fileUrl: true,
+              uploadedAt: true
+            }
+          }
         }
       }),
       prisma.application.count({ where })
@@ -284,6 +308,7 @@ router.get('/', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SUPER
       }
     });
   } catch (error) {
+    console.error('Get applications error:', error);
     return res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Failed to retrieve applications' }
@@ -296,14 +321,54 @@ router.get('/:id', authMiddleware, roleMiddleware([UserRole.OFFICER, UserRole.SU
   try {
     const { id } = req.params;
 
-    const application = await prisma.application.findUnique({
-      where: { id },
+    // Build where clause - officers can only access their assigned applications
+    const where: any = { id };
+    if (req.user?.role === UserRole.OFFICER) {
+      where.assignedOfficerId = req.user.id;
+    }
+
+    const application = await prisma.application.findFirst({
+      where,
       include: {
-        documents: true,
-        assignedOfficer: { select: { fullName: true, email: true } },
-        approvedBy: { select: { fullName: true, email: true } },
-        rejectedBy: { select: { fullName: true, email: true } },
-        entryExitLogs: { orderBy: { recordedAt: 'desc' } }
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            uploadedAt: true
+          }
+        },
+        assignedOfficer: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        approvedBy: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        rejectedBy: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        entryExitLogs: { 
+          orderBy: { recordedAt: 'desc' },
+          select: {
+            id: true,
+            logType: true,
+            checkpointName: true,
+            recordedAt: true
+          }
+        }
       }
     });
 
@@ -361,11 +426,49 @@ router.patch('/:id/review', authMiddleware, roleMiddleware([UserRole.OFFICER]), 
     const { id } = req.params;
     const { recommendation, notes } = req.body;
 
+    // Check if application is assigned to this officer
+    const existingApp = await prisma.application.findUnique({
+      where: { id },
+      select: { assignedOfficerId: true }
+    });
+
+    if (!existingApp) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Application not found' }
+      });
+    }
+
+    if (existingApp.assignedOfficerId !== req.user!.id) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only review applications assigned to you' }
+      });
+    }
+
     const application = await prisma.application.update({
       where: { id },
       data: {
         status: 'UNDER_REVIEW',
         approvalNotes: notes
+      },
+      include: {
+        assignedOfficer: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            uploadedAt: true
+          }
+        }
       }
     });
 
@@ -393,6 +496,27 @@ router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, U
     const { id } = req.params;
     const { notes } = req.body;
 
+    // Check if application exists and officer has permission
+    const existingApp = await prisma.application.findUnique({
+      where: { id },
+      select: { assignedOfficerId: true, status: true }
+    });
+
+    if (!existingApp) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Application not found' }
+      });
+    }
+
+    // Officers can only approve their assigned applications
+    if (req.user?.role === UserRole.OFFICER && existingApp.assignedOfficerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only approve applications assigned to you' }
+      });
+    }
+
     // Generate QR code
     const qrData = await generateQRCode(id);
 
@@ -408,8 +532,29 @@ router.patch('/:id/approve', authMiddleware, roleMiddleware([UserRole.OFFICER, U
         permitExpiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days validity
       },
       include: {
-        assignedOfficer: { select: { fullName: true, email: true } },
-        approvedBy: { select: { fullName: true } }
+        assignedOfficer: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        approvedBy: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            uploadedAt: true
+          }
+        }
       }
     });
 
@@ -461,6 +606,27 @@ router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, Us
     const { id } = req.params;
     const { reason } = req.body;
 
+    // Check if application exists and officer has permission
+    const existingApp = await prisma.application.findUnique({
+      where: { id },
+      select: { assignedOfficerId: true, status: true }
+    });
+
+    if (!existingApp) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Application not found' }
+      });
+    }
+
+    // Officers can only reject their assigned applications
+    if (req.user?.role === UserRole.OFFICER && existingApp.assignedOfficerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only reject applications assigned to you' }
+      });
+    }
+
     const application = await prisma.application.update({
       where: { id },
       data: {
@@ -468,6 +634,31 @@ router.patch('/:id/reject', authMiddleware, roleMiddleware([UserRole.OFFICER, Us
         rejectedById: req.user!.id,
         rejectionDate: new Date(),
         rejectionReason: reason
+      },
+      include: {
+        assignedOfficer: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        rejectedBy: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            uploadedAt: true
+          }
+        }
       }
     });
 
@@ -512,11 +703,50 @@ router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.
     const { id } = req.params;
     const { requestedDocuments, notes } = req.body;
 
+    // Check if application exists and officer has permission
+    const existingApp = await prisma.application.findUnique({
+      where: { id },
+      select: { assignedOfficerId: true }
+    });
+
+    if (!existingApp) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Application not found' }
+      });
+    }
+
+    // Officers can only request documents for their assigned applications
+    if (req.user?.role === UserRole.OFFICER && existingApp.assignedOfficerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only request documents for applications assigned to you' }
+      });
+    }
+
     const application = await prisma.application.update({
       where: { id },
       data: {
         status: 'PENDING_DOCUMENTS',
         approvalNotes: notes
+      },
+      include: {
+        assignedOfficer: { 
+          select: { 
+            id: true,
+            fullName: true, 
+            email: true 
+          } 
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            uploadedAt: true
+          }
+        }
       }
     });
 
@@ -563,21 +793,22 @@ router.patch('/:id/request-documents', authMiddleware, roleMiddleware([UserRole.
 // Get daily applications for supervisor review
 router.get('/supervisor/daily', authMiddleware, roleMiddleware([UserRole.SUPERVISOR, UserRole.DIRECTOR]), async (req: AuthRequest, res: Response) => {
   try {
-    const { status, page = '1', limit = '20' } = req.query;
+    const { status, page = '1', limit = '200', todayOnly = 'false' } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    // Get today's date range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const where: any = {};
 
-    const where: any = {
-      createdAt: {
+    // Only filter by date if todayOnly is true
+    if (todayOnly === 'true') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      where.createdAt = {
         gte: today,
         lt: tomorrow
-      }
-    };
+      };
+    }
 
     // Add status filter if provided
     if (status) {
@@ -596,8 +827,22 @@ router.get('/supervisor/daily', authMiddleware, roleMiddleware([UserRole.SUPERVI
         take: parseInt(limit as string),
         orderBy: { createdAt: 'desc' },
         include: {
-          assignedOfficer: { select: { fullName: true, email: true } },
-          documents: true
+          assignedOfficer: { 
+            select: { 
+              id: true,
+              fullName: true, 
+              email: true 
+            } 
+          },
+          documents: {
+            select: {
+              id: true,
+              documentType: true,
+              fileName: true,
+              fileUrl: true,
+              uploadedAt: true
+            }
+          }
         }
       }),
       prisma.application.count({ where })

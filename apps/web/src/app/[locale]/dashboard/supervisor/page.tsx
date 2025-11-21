@@ -16,6 +16,7 @@ import {
   Plus,
   Trash2,
   BarChart3,
+  LogOut,
 } from 'lucide-react';
 import {
   BarChart,
@@ -159,11 +160,12 @@ export default function SupervisorDashboard() {
         return;
       }
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const [supervisorRes, watchlistRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/supervisor`, {
+        fetch(`${apiUrl}/api/analytics/supervisor`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
+        fetch(`${apiUrl}/api/watchlist`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -191,7 +193,8 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auto-assign/config`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -213,20 +216,66 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/supervisor/daily`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      
+      // Fetch ALL applications for supervisor review (not just today's)
+      // Supervisors need to see all applications that need review
+      const response = await fetch(`${apiUrl}/api/applications?limit=200`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setDailyApplications(result.data);
-          setApplicationStats(result.summary || {
-            totalToday: 0,
-            pending: 0,
-            withDocuments: 0,
-            pendingDocuments: 0
+          const allApps = result.data || [];
+          
+          // Filter to show today's applications for the "Today's Applications" section
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          const todayApps = allApps.filter((app: any) => {
+            const created = new Date(app.createdAt);
+            return created >= today && created < tomorrow;
           });
+          
+          // Filter to pending applications (all pending, not just today's)
+          const pendingApps = allApps.filter((app: any) => 
+            app.status === 'SUBMITTED' || 
+            app.status === 'UNDER_REVIEW' || 
+            app.status === 'PENDING_DOCUMENTS'
+          );
+          
+          // Show today's applications in the list (but if none today, show all pending)
+          const appsToShow = todayApps.length > 0 ? todayApps : pendingApps.slice(0, 50);
+          setDailyApplications(appsToShow);
+          
+          // Calculate stats from the applications being shown
+          setApplicationStats({
+            totalToday: todayApps.length,
+            pending: appsToShow.filter((a: any) => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length,
+            withDocuments: appsToShow.filter((a: any) => a.documents && a.documents.length > 0).length,
+            pendingDocuments: appsToShow.filter((a: any) => a.status === 'PENDING_DOCUMENTS').length
+          });
+        }
+      } else {
+        // Fallback: try the daily endpoint
+        const dailyResponse = await fetch(`${apiUrl}/api/applications/supervisor/daily`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (dailyResponse.ok) {
+          const result = await dailyResponse.json();
+          if (result.success) {
+            setDailyApplications(result.data);
+            setApplicationStats(result.summary || {
+              totalToday: 0,
+              pending: 0,
+              withDocuments: 0,
+              pendingDocuments: 0
+            });
+          }
         }
       }
     } catch (error) {
@@ -239,7 +288,8 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/config`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auto-assign/config`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -268,7 +318,8 @@ export default function SupervisorDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auto-assign/trigger`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auto-assign/trigger`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -306,7 +357,8 @@ export default function SupervisorDashboard() {
 
       console.log('Sending watchlist entry:', newEntry);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/watchlist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -355,7 +407,8 @@ export default function SupervisorDashboard() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/watchlist/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -524,19 +577,26 @@ export default function SupervisorDashboard() {
     );
   }
 
-  const statusChartData = Object.entries(data.summary.statusBreakdown).map(([status, count]) => ({
-    status,
-    count,
-    color: STATUS_COLORS[status] || '#6b7280',
-  }));
+  // Prepare chart data with proper error handling
+  const statusChartData = Object.entries(data.summary.statusBreakdown || {})
+    .filter(([_, count]) => count > 0) // Only show statuses with data
+    .map(([status, count]) => ({
+      status: status.replace('_', ' '),
+      count: count as number,
+      color: STATUS_COLORS[status] || '#6b7280',
+    }))
+    .sort((a, b) => b.count - a.count); // Sort by count descending
 
-  const workloadChartData = data.officerWorkload.map((item) => ({
-    name: item.officer.name.split(' ')[0],
-    total: item.stats.total,
-    pending: item.stats.pending,
-    approved: item.stats.approved,
-    rejected: item.stats.rejected,
-  }));
+  const workloadChartData = (data.officerWorkload || [])
+    .filter(item => item.stats.total > 0) // Only show officers with workload
+    .map((item) => ({
+      name: item.officer.name.split(' ')[0] || item.officer.name,
+      total: item.stats.total,
+      pending: item.stats.pending,
+      approved: item.stats.approved,
+      rejected: item.stats.rejected,
+    }))
+    .sort((a, b) => b.total - a.total); // Sort by total descending
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -562,14 +622,27 @@ export default function SupervisorDashboard() {
           ))}
         </nav>
         <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200 bg-white">
-          <button onClick={fetchData} className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+          <button onClick={fetchData} className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors mb-2">
             <RefreshCw size={16} />
             <span className="text-sm">Refresh Data</span>
           </button>
-          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500 mb-2">
             <span>Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}</span>
             <button onClick={() => setAutoRefresh(!autoRefresh)} className="text-blue-600 hover:underline">Toggle</button>
           </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('token')
+              localStorage.removeItem('user')
+              const pathname = window.location.pathname
+              const locale = pathname?.split('/')[1] || 'en'
+              router.push(`/${locale}/government`)
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+          >
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
@@ -622,19 +695,38 @@ export default function SupervisorDashboard() {
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <BarChart3 className="mr-2" />Application Status Distribution
                 </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={statusChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="status" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {statusChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {statusChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={statusChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="status" 
+                        stroke="#6b7280" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        formatter={(value: any) => [value, 'Count']}
+                        labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                      />
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                        {statusChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                      <p>No status data available</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -647,19 +739,38 @@ export default function SupervisorDashboard() {
               </div>
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">Workload Distribution</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={workloadChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="name" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="total" fill="#3b82f6" name="Total" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="pending" fill="#f59e0b" name="Pending" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="rejected" fill="#ef4444" name="Rejected" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {workloadChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={workloadChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#6b7280" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        formatter={(value: any, name: string) => [value, name]}
+                        labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                      />
+                      <Legend />
+                      <Bar dataKey="total" fill="#3b82f6" name="Total" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="pending" fill="#f59e0b" name="Pending" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="rejected" fill="#ef4444" name="Rejected" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    <div className="text-center">
+                      <Users className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                      <p>No officer workload data available</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div className="p-6 border-b border-gray-200">
@@ -679,29 +790,48 @@ export default function SupervisorDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {data.officerWorkload.map((item) => (
-                        <tr key={item.officer.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="font-medium text-gray-900">{item.officer.name}</div>
-                              <div className="text-sm text-gray-500">{item.officer.email}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{item.stats.total}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{item.stats.pending}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{item.stats.approved}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{item.stats.rejected}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.stats.avgProcessingHours.toFixed(1)}h</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min(item.stats.efficiency, 100)}%` }}></div>
-                              </div>
-                              <span className="text-sm text-gray-900 font-medium">{item.stats.efficiency.toFixed(0)}%</span>
-                            </div>
+                      {data.officerWorkload && data.officerWorkload.length > 0 ? (
+                        data.officerWorkload
+                          .filter(item => item.stats.total > 0) // Only show officers with workload
+                          .sort((a, b) => b.stats.total - a.stats.total) // Sort by total descending
+                          .map((item) => (
+                            <tr key={item.officer.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="font-medium text-gray-900">{item.officer.name || 'Unknown'}</div>
+                                  <div className="text-sm text-gray-500">{item.officer.email || 'N/A'}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{item.stats.total || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{item.stats.pending || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{item.stats.approved || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{item.stats.rejected || 0}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {item.stats.avgProcessingHours ? `${item.stats.avgProcessingHours.toFixed(1)}h` : '0h'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                    <div 
+                                      className="bg-blue-600 h-2.5 rounded-full" 
+                                      style={{ width: `${Math.min(item.stats.efficiency || 0, 100)}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-sm text-gray-900 font-medium">
+                                    {(item.stats.efficiency || 0).toFixed(0)}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                            <Users className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                            <p>No officer workload data available</p>
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -713,6 +843,7 @@ export default function SupervisorDashboard() {
           {activeSection === 'applications' && (
             <SupervisorApplicationsReview
               applications={dailyApplications}
+              stats={applicationStats}
               onRefresh={fetchDailyApplications}
               loading={loading}
             />
@@ -737,25 +868,47 @@ export default function SupervisorDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {data.recentAssignments.length > 0 ? (
-                        data.recentAssignments.map((assignment) => (
-                          <tr key={assignment.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{assignment.referenceNumber}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{assignment.applicant}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{assignment.officer}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                style={{ backgroundColor: STATUS_COLORS[assignment.status] + '20', color: STATUS_COLORS[assignment.status] }}>
-                                {assignment.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(assignment.assignedAt).toLocaleString()}</td>
-                          </tr>
-                        ))
+                      {data.recentAssignments && data.recentAssignments.length > 0 ? (
+                        data.recentAssignments
+                          .sort((a, b) => {
+                            const aTime = new Date(a.assignedAt).getTime();
+                            const bTime = new Date(b.assignedAt).getTime();
+                            return bTime - aTime; // Sort by most recent first
+                          })
+                          .map((assignment) => (
+                            <tr key={assignment.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                {assignment.referenceNumber || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {assignment.applicant || 'Unknown'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {assignment.officer || 'Unassigned'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span 
+                                  className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                  style={{ 
+                                    backgroundColor: (STATUS_COLORS[assignment.status] || '#6b7280') + '20', 
+                                    color: STATUS_COLORS[assignment.status] || '#6b7280' 
+                                  }}
+                                >
+                                  {assignment.status?.replace('_', ' ') || 'Unknown'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {assignment.assignedAt 
+                                  ? new Date(assignment.assignedAt).toLocaleString() 
+                                  : 'N/A'}
+                              </td>
+                            </tr>
+                          ))
                       ) : (
                         <tr>
                           <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                            No assignments yet. Assignments will appear here once applications are assigned to officers.
+                            <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                            <p>No assignments yet. Assignments will appear here once applications are assigned to officers.</p>
                           </td>
                         </tr>
                       )}
@@ -1231,8 +1384,14 @@ export default function SupervisorDashboard() {
 }
 
 // Supervisor Applications Review Component
-function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
+function SupervisorApplicationsReview({ applications, stats, onRefresh, loading }: {
   applications: any[];
+  stats?: {
+    totalToday: number;
+    pending: number;
+    withDocuments: number;
+    pendingDocuments: number;
+  };
   onRefresh: () => void;
   loading: boolean;
 }) {
@@ -1266,8 +1425,9 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const promises = Array.from(selectedApplications).map(appId =>
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${appId}/approve`, {
+        fetch(`${apiUrl}/api/applications/${appId}/approve`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1332,7 +1492,7 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-700">Today's Total</p>
-              <p className="text-3xl font-bold text-blue-900 mt-2">{applications.length}</p>
+              <p className="text-3xl font-bold text-blue-900 mt-2">{stats?.totalToday ?? applications.length}</p>
               <p className="text-xs text-blue-600 mt-1">Applications submitted</p>
             </div>
             <FileText className="w-8 h-8 text-blue-600" />
@@ -1344,7 +1504,7 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
             <div>
               <p className="text-sm font-medium text-yellow-700">Pending Review</p>
               <p className="text-3xl font-bold text-yellow-900 mt-2">
-                {applications.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length}
+                {applicationStats.pending}
               </p>
               <p className="text-xs text-yellow-600 mt-1">Awaiting approval</p>
             </div>
@@ -1357,7 +1517,7 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
             <div>
               <p className="text-sm font-medium text-green-700">With Documents</p>
               <p className="text-3xl font-bold text-green-900 mt-2">
-                {applications.filter(a => a.documents && a.documents.length > 0).length}
+                {applicationStats.withDocuments}
               </p>
               <p className="text-xs text-green-600 mt-1">Have uploaded files</p>
             </div>
@@ -1370,7 +1530,7 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
             <div>
               <p className="text-sm font-medium text-orange-700">Pending Documents</p>
               <p className="text-3xl font-bold text-orange-900 mt-2">
-                {applications.filter(a => a.status === 'PENDING_DOCUMENTS').length}
+                {applicationStats.pendingDocuments}
               </p>
               <p className="text-xs text-orange-600 mt-1">Additional docs needed</p>
             </div>
@@ -1509,7 +1669,8 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
                                 if (!token) return;
 
                                 try {
-                                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${app.id}/approve`, {
+                                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                                  const response = await fetch(`${apiUrl}/api/applications/${app.id}/approve`, {
                                     method: 'PATCH',
                                     headers: {
                                       'Content-Type': 'application/json',
@@ -1542,7 +1703,8 @@ function SupervisorApplicationsReview({ applications, onRefresh, loading }: {
                                 if (!token) return;
 
                                 try {
-                                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/${app.id}/reject`, {
+                                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                                  const response = await fetch(`${apiUrl}/api/applications/${app.id}/reject`, {
                                     method: 'PATCH',
                                     headers: {
                                       'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area,
   Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
@@ -9,7 +10,7 @@ import {
   Menu, X, Download, Filter, TrendingUp, TrendingDown, Users,
   FileText, CheckCircle, XCircle, Clock, Activity, MapPin, Calendar,
   User, Globe, Briefcase, Home, School, Heart, ChevronDown, RefreshCw,
-  DollarSign, Eye, LogOut, AlertTriangle
+  DollarSign, Eye, LogOut, AlertTriangle, GraduationCap
 } from 'lucide-react';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -28,6 +29,29 @@ const COLORS = {
 };
 
 const CHART_COLORS = [COLORS.primary, COLORS.success, COLORS.warning, COLORS.danger, COLORS.purple, COLORS.pink];
+
+// Helper function to safely format dates
+const safeFormatDate = (dateValue: string | Date | null | undefined, formatString: string): string => {
+  if (!dateValue) return 'N/A';
+  try {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    if (isNaN(date.getTime())) return 'N/A';
+    return format(date, formatString);
+  } catch (error) {
+    return 'N/A';
+  }
+};
+
+// Helper function to check if date is valid
+const isValidDate = (dateValue: string | Date | null | undefined): boolean => {
+  if (!dateValue) return false;
+  try {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    return !isNaN(date.getTime());
+  } catch (error) {
+    return false;
+  }
+};
 
 interface AnalyticsData {
   summary: {
@@ -114,6 +138,8 @@ interface AnalyticsData {
 }
 
 export default function ProfessionalDirectorDashboard() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState('overview');
   const [activeVisitorTab, setActiveVisitorTab] = useState('active');
@@ -416,28 +442,39 @@ export default function ProfessionalDirectorDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Failed to load data</div>;
   }
 
-  // Prepare data for visualizations
+  // Prepare data for visualizations with error handling
   const genderData = [
-    { name: 'Male', value: data.demographics.gender.male, color: COLORS.primary },
-    { name: 'Female', value: data.demographics.gender.female, color: COLORS.pink },
-  ];
+    { name: 'Male', value: data.demographics?.gender?.male || 0, color: COLORS.primary },
+    { name: 'Female', value: data.demographics?.gender?.female || 0, color: COLORS.pink },
+  ].filter(item => item.value > 0); // Only show if there's data
 
-  const ageData = Object.entries(data.demographics.ageGroups).map(([age, count]) => ({
-    age,
-    count
-  }));
+  const ageData = Object.entries(data.demographics?.ageGroups || {})
+    .filter(([_, count]) => (count as number) > 0)
+    .map(([age, count]) => ({
+      age,
+      count: count as number
+    }))
+    .sort((a, b) => a.age.localeCompare(b.age));
 
-  const purposeData = Object.entries(data.purposes).map(([purpose, count]) => ({
-    purpose: purpose.charAt(0) + purpose.slice(1).toLowerCase(),
-    count,
-    percentage: Math.round((count / data.summary.total) * 100)
-  }));
+  const purposeData = Object.entries(data.purposes || {})
+    .filter(([_, count]) => (count as number) > 0)
+    .map(([purpose, count]) => ({
+      purpose: purpose.charAt(0) + purpose.slice(1).toLowerCase().replace('_', ' '),
+      count: count as number,
+      percentage: data.summary.total > 0 
+        ? Math.round(((count as number) / data.summary.total) * 100) 
+        : 0
+    }))
+    .sort((a, b) => b.count - a.count); // Sort by count descending
 
-  const statusData = Object.entries(data.statusBreakdown).map(([status, count], index) => ({
-    status: status.replace('_', ' '),
-    count,
-    color: CHART_COLORS[index % CHART_COLORS.length]
-  }));
+  const statusData = Object.entries(data.statusBreakdown || {})
+    .filter(([_, count]) => (count as number) > 0)
+    .map(([status, count], index) => ({
+      status: status.replace('_', ' '),
+      count: count as number,
+      color: CHART_COLORS[index % CHART_COLORS.length]
+    }))
+    .sort((a, b) => b.count - a.count); // Sort by count descending
 
   // Sidebar navigation items
   const navItems = [
@@ -482,6 +519,23 @@ export default function ProfessionalDirectorDashboard() {
             );
           })}
         </nav>
+        
+        {/* Logout Button */}
+        <div className="absolute bottom-0 w-full p-4 border-t border-gray-200 bg-white">
+          <button
+            onClick={() => {
+              localStorage.removeItem('token')
+              localStorage.removeItem('user')
+              const pathname = window.location.pathname
+              const locale = pathname?.split('/')[1] || 'en'
+              router.push(`/${locale}/government`)
+            }}
+            className={`w-full flex items-center ${sidebarOpen ? 'justify-center gap-2' : 'justify-center'} px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition`}
+          >
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -621,76 +675,119 @@ export default function ProfessionalDirectorDashboard() {
               {/* Applications Trend */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Applications Over Time</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={data.applicationsPerDay.slice(-30)}>
-                    <defs>
-                      <linearGradient id="colorApplications" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="applications" 
-                      stroke={COLORS.primary} 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorApplications)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {data.applicationsPerDay && data.applicationsPerDay.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={data.applicationsPerDay.slice(-30)}>
+                      <defs>
+                        <linearGradient id="colorApplications" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 11 }} 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        formatter={(value: any) => [value, 'Applications']}
+                        labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="applications" 
+                        stroke={COLORS.primary} 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorApplications)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    <div className="text-center">
+                      <Activity className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                      <p>No application trend data available</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Status Distribution */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Status Distribution</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={statusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="count"
-                      >
-                        {statusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {statusData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={statusData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={5}
+                          dataKey="count"
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {statusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: any) => [value, 'Count']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[250px] text-gray-500">
+                      <div className="text-center">
+                        <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <p>No status data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Top Officers</h3>
-                  <div className="space-y-3">
-                    {data.officerPerformance.slice(0, 5).map(officer => (
-                      <div key={officer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-blue-600" />
+                  {data.officerPerformance && data.officerPerformance.length > 0 ? (
+                    <div className="space-y-3">
+                      {data.officerPerformance
+                        .filter(officer => officer.assigned > 0)
+                        .sort((a, b) => b.efficiency - a.efficiency)
+                        .slice(0, 5)
+                        .map(officer => (
+                          <div key={officer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{officer.name || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500">{officer.assigned || 0} assigned</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-green-600">{officer.efficiency || 0}%</p>
+                              <p className="text-xs text-gray-500">Efficiency</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{officer.name}</p>
-                            <p className="text-sm text-gray-500">{officer.assigned} assigned</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-green-600">{officer.efficiency}%</p>
-                          <p className="text-xs text-gray-500">Efficiency</p>
-                        </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-[200px] text-gray-500">
+                      <div className="text-center">
+                        <User className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <p>No officer performance data available</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -847,37 +944,55 @@ export default function ProfessionalDirectorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Gender Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={genderData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        dataKey="value"
-                      >
-                        {genderData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {genderData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={genderData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          dataKey="value"
+                        >
+                          {genderData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => [value, 'Count']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-500">
+                      <div className="text-center">
+                        <Users className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <p>No gender data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Age Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={ageData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="age" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {ageData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={ageData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="age" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value: any) => [value, 'Count']} />
+                        <Bar dataKey="count" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-500">
+                      <div className="text-center">
+                        <Users className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                        <p>No age data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -885,50 +1000,78 @@ export default function ProfessionalDirectorDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Occupations</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={data.demographics.occupations.slice(0, 5)} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="occupation" width={80} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill={COLORS.success} radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {data.demographics?.occupations && data.demographics.occupations.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={data.demographics.occupations.slice(0, 5)} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis type="number" tick={{ fontSize: 12 }} />
+                        <YAxis type="category" dataKey="occupation" width={100} tick={{ fontSize: 11 }} />
+                        <Tooltip formatter={(value: any) => [value, 'Count']} />
+                        <Bar dataKey="count" fill={COLORS.success} radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[250px] text-gray-500">
+                      <div className="text-center">
+                        <Briefcase className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                        <p>No occupation data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Education Levels</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={data.demographics.educationLevels}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="count"
-                      >
-                        {data.demographics.educationLevels.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {data.demographics?.educationLevels && data.demographics.educationLevels.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={data.demographics.educationLevels}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="count"
+                          label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {data.demographics.educationLevels.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => [value, 'Count']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[250px] text-gray-500">
+                      <div className="text-center">
+                        <GraduationCap className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                        <p>No education data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Income Ranges</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={data.demographics.incomeRanges.slice(0, 5)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="range" angle={-45} textAnchor="end" height={80} />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill={COLORS.warning} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {data.demographics?.incomeRanges && data.demographics.incomeRanges.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={data.demographics.incomeRanges.slice(0, 5)}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="range" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value: any) => [value, 'Count']} />
+                        <Bar dataKey="count" fill={COLORS.warning} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[250px] text-gray-500">
+                      <div className="text-center">
+                        <DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                        <p>No income data available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -946,21 +1089,32 @@ export default function ProfessionalDirectorDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.demographics.nationalities.map((nat, index) => (
-                        <tr key={index} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4 font-medium">{nat.country}</td>
-                          <td className="py-3 px-4 text-right">{nat.count.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right">{nat.percentage}%</td>
-                          <td className="py-3 px-4">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${nat.percentage}%` }}
-                              />
-                            </div>
+                      {data.demographics?.nationalities && data.demographics.nationalities.length > 0 ? (
+                        data.demographics.nationalities
+                          .sort((a, b) => b.count - a.count) // Sort by count descending
+                          .map((nat, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                              <td className="py-3 px-4 font-medium">{nat.country || 'Unknown'}</td>
+                              <td className="py-3 px-4 text-right">{(nat.count || 0).toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right">{nat.percentage || 0}%</td>
+                              <td className="py-3 px-4">
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: `${Math.min(nat.percentage || 0, 100)}%` }}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-gray-500">
+                            <Globe className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                            <p>No nationality data available</p>
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1088,9 +1242,9 @@ export default function ProfessionalDirectorDashboard() {
                               ['Reference Number', 'Full Name', 'Nationality', 'Purpose', 'Entry Date', 'Checkpoint', 'Expiry Date'].join(','),
                               ...data.visitorStatus.activeVisitors.map(visitor =>
                                 [visitor.referenceNumber, visitor.fullName, visitor.nationality, visitor.visitPurpose,
-                                 format(new Date(visitor.entryDate), 'yyyy-MM-dd HH:mm'),
-                                 visitor.checkpointName,
-                                 visitor.permitExpiryDate ? format(new Date(visitor.permitExpiryDate), 'yyyy-MM-dd') : ''].join(',')
+                                 safeFormatDate(visitor.entryDate, 'yyyy-MM-dd HH:mm'),
+                                 visitor.checkpointName || 'N/A',
+                                 safeFormatDate(visitor.permitExpiryDate, 'yyyy-MM-dd')].join(',')
                               )
                             ].join('\n');
                             const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -1119,7 +1273,8 @@ export default function ProfessionalDirectorDashboard() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {data.visitorStatus?.activeVisitors.map((visitor) => (
+                            {data.visitorStatus?.activeVisitors && data.visitorStatus.activeVisitors.length > 0 ? (
+                              data.visitorStatus.activeVisitors.map((visitor) => (
                               <tr key={visitor.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
@@ -1138,20 +1293,32 @@ export default function ProfessionalDirectorDashboard() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <div className="text-sm text-gray-900">
-                                      {format(new Date(visitor.entryDate), 'MMM dd, yyyy HH:mm')}
+                                      {safeFormatDate(visitor.entryDate, 'MMM dd, yyyy HH:mm')}
                                     </div>
-                                    <div className="text-sm text-gray-500">via {visitor.checkpointName}</div>
+                                    <div className="text-sm text-gray-500">via {visitor.checkpointName || 'N/A'}</div>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className={`text-sm font-medium ${
-                                    new Date(visitor.permitExpiryDate) < new Date() ? 'text-red-600' : 'text-green-600'
-                                  }`}>
-                                    {format(new Date(visitor.permitExpiryDate), 'MMM dd, yyyy')}
-                                  </div>
+                                  {isValidDate(visitor.permitExpiryDate) ? (
+                                    <div className={`text-sm font-medium ${
+                                      new Date(visitor.permitExpiryDate!) < new Date() ? 'text-red-600' : 'text-green-600'
+                                    }`}>
+                                      {safeFormatDate(visitor.permitExpiryDate, 'MMM dd, yyyy')}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-gray-500">N/A</div>
+                                  )}
                                 </td>
                               </tr>
-                            )) || []}
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                  <Eye className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                  <p>No active visitors at this time</p>
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -1172,7 +1339,8 @@ export default function ProfessionalDirectorDashboard() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {data.visitorStatus?.recentExits.map((exit) => (
+                            {data.visitorStatus?.recentExits && data.visitorStatus.recentExits.length > 0 ? (
+                              data.visitorStatus.recentExits.map((exit) => (
                               <tr key={exit.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
@@ -1186,13 +1354,21 @@ export default function ProfessionalDirectorDashboard() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <div className="text-sm text-gray-900">
-                                      {format(new Date(exit.exitDate), 'MMM dd, yyyy HH:mm')}
+                                      {safeFormatDate(exit.exitDate, 'MMM dd, yyyy HH:mm')}
                                     </div>
-                                    <div className="text-sm text-gray-500">via {exit.checkpointName}</div>
+                                    <div className="text-sm text-gray-500">via {exit.checkpointName || 'N/A'}</div>
                                   </div>
                                 </td>
                               </tr>
-                            )) || []}
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                                  <Eye className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                  <p>No recent exits recorded</p>
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -1253,7 +1429,8 @@ export default function ProfessionalDirectorDashboard() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {data.visitorStatus?.overstayingVisitors.map((visitor) => (
+                            {data.visitorStatus?.overstayingVisitors && data.visitorStatus.overstayingVisitors.length > 0 ? (
+                              data.visitorStatus.overstayingVisitors.map((visitor) => (
                               <tr key={visitor.id} className="hover:bg-gray-50 bg-red-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
@@ -1263,7 +1440,7 @@ export default function ProfessionalDirectorDashboard() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm text-gray-900">
-                                    {format(new Date(visitor.entryDate), 'MMM dd, yyyy')}
+                                    {safeFormatDate(visitor.entryDate, 'MMM dd, yyyy')}
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -1277,7 +1454,15 @@ export default function ProfessionalDirectorDashboard() {
                                   </button>
                                 </td>
                               </tr>
-                            )) || []}
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                                  <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                  <p>No overstaying visitors at this time</p>
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>

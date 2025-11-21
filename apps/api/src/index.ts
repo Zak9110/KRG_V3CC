@@ -70,9 +70,22 @@ const authLimiter = rateLimit({
   },
 });
 
+// More lenient rate limiter for OTP in development
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: env.NODE_ENV === 'development' ? 1000 : 20, // Very high limit in development
+  message: 'Too many OTP requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting in development for localhost
+    return env.NODE_ENV === 'development' && (req.ip === '::1' || req.ip === '127.0.0.1');
+  },
+});
+
 app.use('/api/', generalLimiter);
 app.use('/api/auth/login', authLimiter);
-app.use('/api/otp/', authLimiter);
+app.use('/api/otp/', otpLimiter);
 
 // Request logging
 app.use(requestLogger);

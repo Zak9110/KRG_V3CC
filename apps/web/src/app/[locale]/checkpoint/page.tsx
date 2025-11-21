@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Html5Qrcode } from 'html5-qrcode';
 import AuthGuard from '@/components/AuthGuard';
 
@@ -15,6 +16,8 @@ interface PermitDetails {
 }
 
 function CheckpointScannerContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [scanning, setScanning] = useState(false);
   const [permit, setPermit] = useState<PermitDetails | null>(null);
   const [error, setError] = useState('');
@@ -301,10 +304,28 @@ function CheckpointScannerContent() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            🚧 Checkpoint Scanner
-          </h1>
-          <p className="text-gray-600">Scan QR codes to verify e-Visit permits</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                🚧 Checkpoint Scanner
+              </h1>
+              <p className="text-gray-600">Scan QR codes to verify e-Visit permits</p>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                const locale = pathname?.split('/')[1] || 'en'
+                router.push(`/${locale}/government`)
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Logout
+            </button>
+          </div>
           
           {/* Checkpoint selector */}
           <div className="mt-4">

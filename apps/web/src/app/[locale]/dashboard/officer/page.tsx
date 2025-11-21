@@ -186,9 +186,10 @@ export default function OfficerDashboard() {
             break
         }
 
-        setApplications(filteredApps)
+        // Store all applications for stats calculation
+        setApplications(apps) // Store all apps, not filtered ones
 
-        // Calculate stats
+        // Calculate stats from ALL applications (not filtered by tab)
         const pending = apps.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length
         const approved = apps.filter(a => a.status === 'APPROVED').length
         const rejected = apps.filter(a => a.status === 'REJECTED').length
@@ -257,21 +258,22 @@ export default function OfficerDashboard() {
   }
 
   const getFilteredApplications = () => {
-    let filtered = applications
+    // Start with all applications
+    let filtered = [...applications]
 
     // Filter by tab
     switch (activeTab) {
       case 'pending':
-        filtered = applications.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW')
+        filtered = filtered.filter(a => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW')
         break
       case 'approved':
-        filtered = applications.filter(a => a.status === 'APPROVED')
+        filtered = filtered.filter(a => a.status === 'APPROVED')
         break
       case 'rejected':
-        filtered = applications.filter(a => a.status === 'REJECTED')
+        filtered = filtered.filter(a => a.status === 'REJECTED')
         break
       case 'all':
-        // Show all
+        // Show all applications
         break
     }
 
@@ -641,7 +643,9 @@ export default function OfficerDashboard() {
             onClick={() => {
               localStorage.removeItem('token')
               localStorage.removeItem('user')
-              router.push('/login')
+              const pathname = window.location.pathname
+              const locale = pathname?.split('/')[1] || 'en'
+              router.push(`/${locale}/government`)
             }}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
           >

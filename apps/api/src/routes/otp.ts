@@ -55,11 +55,13 @@ router.post('/send', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Rate limiting: Check if OTP was sent recently (prevent spam)
+    // In development, reduce cooldown to 10 seconds for easier testing
+    const cooldownSeconds = process.env.NODE_ENV === 'development' ? 10 : 60;
     const recentOTP = await prisma.otpVerification.findFirst({
       where: {
         phoneNumber,
         createdAt: {
-          gte: new Date(Date.now() - 60 * 1000), // Within last 60 seconds
+          gte: new Date(Date.now() - cooldownSeconds * 1000),
         },
       },
     });
@@ -68,7 +70,7 @@ router.post('/send', async (req: Request, res: Response): Promise<void> => {
       res.status(429).json({
         success: false,
         error: {
-          message: 'OTP already sent. Please wait 60 seconds before requesting again.',
+          message: `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting again.`,
         },
       });
       return;
