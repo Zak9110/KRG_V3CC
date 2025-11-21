@@ -87,7 +87,14 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Generate reference number
-    const count = await prisma.application.count();
+    let count = 0;
+    try {
+      count = await prisma.application.count();
+    } catch (countError) {
+      console.error('Error counting applications:', countError);
+      // Use timestamp-based reference if count fails
+      count = Date.now() % 1000000;
+    }
     const referenceNumber = `KRG-2025-${String(count + 1).padStart(6, '0')}`;
 
     // Calculate stay duration
@@ -152,11 +159,24 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     return res.status(201).json({ success: true, data: application });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Application creation error:', error);
+    // Provide more detailed error message for debugging
+    const errorMessage = error?.message || 'Failed to create application';
+    const errorCode = error?.code || 'SERVER_ERROR';
+    
+    // Log full error details for debugging
+    if (error?.meta) {
+      console.error('Prisma error details:', error.meta);
+    }
+    
     return res.status(500).json({
       success: false,
-      error: { code: 'SERVER_ERROR', message: 'Failed to create application' }
+      error: { 
+        code: errorCode, 
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      }
     });
   }
 });

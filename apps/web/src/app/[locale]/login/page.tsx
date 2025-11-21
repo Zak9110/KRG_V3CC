@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslations, useLocale } from 'next-intl';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 const STAFF_ROLES = [
   { 
@@ -36,14 +35,17 @@ const STAFF_ROLES = [
 ];
 
 export default function LoginPage() {
-  const t = useTranslations('login');
-  const locale = useLocale();
+  // Government login is always English-only (no translations needed)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  
+  // Extract locale from pathname (e.g., /en/login -> 'en')
+  const locale = pathname?.split('/')[1] || 'en';
 
   // Get role from URL parameter (for backward compatibility)
   const roleParam = searchParams.get('role');
@@ -83,10 +85,33 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      // Check if response is ok first
+      if (!response.ok) {
+        let errorMessage = 'Login failed. Please check your credentials.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use status-based message
+          if (response.status === 401) {
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+          } else if (response.status === 429) {
+            errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+          } else if (response.status >= 500) {
+            errorMessage = 'Server error. Please try again later.';
+          }
+        }
+        console.error('Login error:', { status: response.status, message: errorMessage });
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+
       const result = await response.json();
 
       if (!result.success) {
-        setError(result.error?.message || t('failed'));
+        console.error('Login failed:', result);
+        setError(result.error?.message || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
@@ -120,7 +145,7 @@ export default function LoginPage() {
       // Use window.location for a full page navigation to ensure auth state is properly initialized
       window.location.href = dashboardPath;
     } catch (err: any) {
-      setError(t('connectionError'));
+      setError('Connection error. Please check your internet connection and try again.');
       setLoading(false);
     }
   };
@@ -363,23 +388,30 @@ export default function LoginPage() {
               </form>
 
               {/* Test Credentials Notice */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
                 <div className="flex items-start">
-                  <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-blue-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-900 mb-2">
-                      Test Credentials
+                    <p className="text-base font-bold text-blue-900 mb-3">
+                      🔑 Test Credentials (Development Only)
                     </p>
+                    <div className="bg-white rounded-lg p-3 mb-3 border border-blue-200">
+                      <p className="text-sm font-semibold text-gray-800 mb-1">Password for ALL accounts:</p>
+                      <p className="text-lg font-mono font-bold text-blue-700 bg-blue-50 px-3 py-2 rounded border border-blue-300">
+                        password123
+                      </p>
+                    </div>
                     <p className="text-xs text-blue-700 mb-3">
-                      Select a role above to auto-fill email. Password for all test accounts: <strong>password123</strong>
+                      💡 <strong>Tip:</strong> Select a role above to auto-fill the email address
                     </p>
-                    <div className="text-xs text-blue-700 space-y-1">
+                    <div className="text-xs text-blue-700 space-y-2">
+                      <div className="font-semibold text-blue-900 mb-2">Available Accounts:</div>
                       {STAFF_ROLES.map((role) => (
-                        <div key={role.value} className="flex justify-between items-center py-1">
+                        <div key={role.value} className="flex justify-between items-center py-1.5 px-2 bg-white rounded border border-blue-100">
                           <span className="font-medium">{role.icon} {role.label}:</span>
-                          <span className="font-mono">{role.email}</span>
+                          <span className="font-mono text-blue-800">{role.email}</span>
                         </div>
                       ))}
                     </div>

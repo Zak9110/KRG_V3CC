@@ -15,7 +15,8 @@
     "filter": "Filter",
     "export": "Export",
     "download": "Download",
-    "upload": "Upload"
+    "upload": "Upload",
+    "required": "is required"
   },
   "home": {
     "title": "KRG e-Visit Permit System",
@@ -57,30 +58,141 @@
     "step2": "Enter OTP Code",
     "step3": "Application Details",
     "step4": "Success",
-    "phoneLabel": "Phone Number",
-    "phonePlaceholder": "+964xxxxxxxxx",
-    "sendOTP": "Send OTP Code",
-    "otpLabel": "Enter 6-digit code",
-    "verify": "Verify Code",
-    "resend": "Resend Code",
-    "fullName": "Full Name",
-    "nationalId": "National ID Number",
-    "email": "Email (Optional)",
-    "dateOfBirth": "Date of Birth",
-    "nationality": "Nationality",
-    "originGovernorate": "Origin Governorate",
-    "destinationGovernorate": "Destination in KRG",
-    "visitPurpose": "Purpose of Visit",
-    "visitDates": "Visit Duration",
-    "startDate": "Start Date",
-    "endDate": "End Date",
-    "accommodation": "Declared Accommodation",
-    "documents": "Upload Documents",
-    "nationalIdFile": "National ID (Required)",
-    "passportFile": "Passport (Optional)",
-    "submitApplication": "Submit Application",
-    "successMessage": "Application submitted successfully!",
-    "referenceNumber": "Your reference number",
+    "phone": {
+      "title": "Verify Your Phone",
+      "description": "Enter your phone number to receive a verification code",
+      "label": "Phone Number",
+      "placeholder": "7501234567",
+      "example": "Example: 7501234567 (without leading 0)",
+      "sendCode": "Send Verification Code",
+      "sending": "Sending...",
+      "backToLanding": "Back to Landing Page"
+    },
+    "otp": {
+      "title": "Enter Verification Code",
+      "sentTo": "We sent a 6-digit code to",
+      "devMode": "🔧 Development Mode",
+      "yourOtp": "Your OTP:",
+      "label": "Verification Code",
+      "placeholder": "000000",
+      "verify": "Verify Code",
+      "verifying": "Verifying...",
+      "resendIn": "Resend code in",
+      "resend": "Resend Code",
+      "changePhone": "← Change Phone Number",
+      "verified": "✅ Phone verified successfully!",
+      "invalid": "❌ Invalid or expired code"
+    },
+    "form": {
+      "title": "e-Visit Application",
+      "phoneVerified": "✅ Phone verified:",
+      "personalInfo": "Personal Information",
+      "visitDetails": "Visit Details",
+      "fullName": "Full Name *",
+      "fullNamePlaceholder": "Enter your full name",
+      "motherFullName": "Mother's Full Name",
+      "motherFullNamePlaceholder": "Enter mother's full name",
+      "gender": "Gender *",
+      "male": "Male",
+      "female": "Female",
+      "nationalId": "National ID *",
+      "nationalIdPlaceholder": "Enter national ID",
+      "dateOfBirth": "Date of Birth *",
+      "email": "Email (Optional)",
+      "emailPlaceholder": "your@email.com",
+      "nationality": "Nationality *",
+      "occupation": "Occupation (Optional)",
+      "selectOccupation": "Select occupation",
+      "occupations": {
+        "STUDENT": "Student",
+        "BUSINESS": "Business Professional",
+        "TOURISM": "Tourism/Hospitality",
+        "MEDICAL": "Medical Professional",
+        "ENGINEERING": "Engineering",
+        "TEACHING": "Teaching/Education",
+        "GOVERNMENT": "Government Employee",
+        "OTHER": "Other"
+      },
+      "educationLevel": "Education Level (Optional)",
+      "selectEducation": "Select education level",
+      "education": {
+        "PRIMARY": "Primary School",
+        "SECONDARY": "Secondary School",
+        "UNIVERSITY": "University",
+        "POSTGRADUATE": "Postgraduate",
+        "NONE": "No Formal Education"
+      },
+      "monthlyIncome": "Monthly Income (Optional)",
+      "selectIncome": "Select income range",
+      "income": {
+        "UNDER_500": "Under $500",
+        "500_1000": "$500 - $1,000",
+        "1000_2000": "$1,000 - $2,000",
+        "2000_5000": "$2,000 - $5,000",
+        "OVER_5000": "Over $5,000",
+        "PREFER_NOT_SAY": "Prefer not to say"
+      },
+      "previousVisits": "Previous Visits to Kurdistan (Optional)",
+      "previousVisitsPlaceholder": "0",
+      "originGovernorate": "Origin Governorate *",
+      "selectOrigin": "Select your governorate",
+      "destinationGovernorate": "Destination in KRG *",
+      "selectDestination": "Select destination",
+      "visitPurpose": "Visit Purpose *",
+      "visitStartDate": "Visit Start Date *",
+      "visitEndDate": "Visit End Date *",
+      "accommodationType": "Accommodation Type (Optional)",
+      "selectAccommodation": "Select accommodation type",
+      "accommodationTypes": {
+        "HOTEL": "Hotel/Resort",
+        "RENTAL": "Rental Apartment",
+        "FAMILY_HOME": "Family/Friends Home",
+        "HOSTEL": "Hostel/Backpacker",
+        "OTHER": "Other"
+      },
+      "dailySpending": "Estimated Daily Spending (USD) (Optional)",
+      "dailySpendingPlaceholder": "50.00",
+      "dailySpendingNote": "Approximate daily expenses for food, transport, activities, etc.",
+      "declaredAccommodation": "Declared Accommodation",
+      "accommodationPlaceholder": "Hotel name and address or host information",
+      "documents": {
+        "title": "📄 Required Documents",
+        "note": "Please upload clear photos of your documents (JPEG, PNG, or PDF, max 5MB each)",
+        "headshot": "📸 Headshot Photo *",
+        "headshotNote": "Recent passport-style photo",
+        "nationalIdFront": "🪪 National ID (Front) *",
+        "nationalIdBack": "🪪 National ID (Back) *",
+        "passport": "📕 Passport Photo (Optional)"
+      },
+      "backToLanding": "Back to Landing Page",
+      "submit": "Submit Application",
+      "submitting": "Submitting..."
+    },
+    "success": {
+      "title": "Application Submitted!",
+      "description": "Your e-Visit application has been received and is being processed.",
+      "referenceNumber": "Your Reference Number",
+      "saveReference": "Save this number to track your application",
+      "smsSent": "📱 We've sent a confirmation SMS to",
+      "smsUpdates": "You'll receive updates about your application via SMS",
+      "nextSteps": "What happens next?",
+      "step1": "Your application will be reviewed within 72 hours",
+      "step2": "You'll receive SMS updates about your application status",
+      "step3": "Once approved, download your QR code permit",
+      "step4": "Show the QR code at the checkpoint when entering Kurdistan",
+      "trackApplication": "Track Application",
+      "returnToLanding": "Return to Landing Page"
+    },
+    "errors": {
+      "invalidPhone": "Please enter a valid phone number",
+      "sendOtpFailed": "Failed to send OTP",
+      "verifyOtpFailed": "Error verifying OTP. Please try again.",
+      "submitFailed": "Failed to submit application",
+      "connectionError": "Error sending OTP. Please check your connection.",
+      "tryAgain": "Please try again.",
+      "dateMustBeFuture": "Visit start date must be in the future",
+      "endDateAfterStart": "Visit end date must be after the start date"
+    },
     "purposes": {
       "TOURISM": "Tourism",
       "BUSINESS": "Business",
@@ -265,6 +377,15 @@
     }
   },
   "landing": {
+    "header": {
+      "title": "KRG e-Visit System",
+      "subtitle": "Kurdistan Regional Government",
+      "nav": {
+        "government": "Government Portal",
+        "track": "Track Application",
+        "contact": "Contact"
+      }
+    },
     "hero": {
       "title": "Apply for Kurdistan Residency Permit",
       "subtitle": "Fast, secure, and digital application process for visitors to the Kurdistan Region of Iraq",
@@ -327,6 +448,8 @@
       }
     },
     "footer": {
+      "title": "KRG e-Visit",
+      "subtitle": "Digital Immigration Services",
       "description": "Official digital immigration platform of the Kurdistan Regional Government",
       "services": {
         "title": "Services",
@@ -337,14 +460,15 @@
       },
       "contact": {
         "title": "Contact Us",
-        "address": "Council of Ministers, 44001 Erbil, Kurdistan Region, Iraq",
+        "address": "Council of Ministers, 44001 Erbil",
+        "region": "Kurdistan Region, Iraq",
         "phone": "+964 750 123 4567",
         "email": "evisit@krg.gov.krd"
       },
       "follow": {
         "title": "Follow Us"
       },
-      "copyright": "All rights reserved."
+      "copyright": "© 2025 Kurdistan Regional Government. All rights reserved."
     }
   }
 }

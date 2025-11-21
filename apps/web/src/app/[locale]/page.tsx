@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 export default function HomePage() {
   const t = useTranslations('landing')
+  const locale = useLocale()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -20,21 +21,21 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold">KRG e-Visit System</h1>
-                <p className="text-sm text-blue-100">Kurdistan Regional Government</p>
+                <h1 className="text-xl font-bold">{t('header.title')}</h1>
+                <p className="text-sm text-blue-100">{t('header.subtitle')}</p>
               </div>
             </div>
 
             {/* Navigation */}
             <nav className="hidden md:flex space-x-8">
-              <Link href="/government" className="text-white hover:text-blue-200 transition">
-                Government Portal
+              <Link href={`/${locale}/government`} className="text-white hover:text-blue-200 transition">
+                {t('header.nav.government')}
               </Link>
-              <Link href="/track" className="text-white hover:text-blue-200 transition">
-                Track Application
+              <Link href={`/${locale}/track`} className="text-white hover:text-blue-200 transition">
+                {t('header.nav.track')}
               </Link>
-              <Link href="/contact" className="text-white hover:text-blue-200 transition">
-                Contact
+              <Link href={`/${locale}/contact`} className="text-white hover:text-blue-200 transition">
+                {t('header.nav.contact')}
               </Link>
             </nav>
 
@@ -53,23 +54,23 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Apply for Kurdistan Residency Permit
+              {t('hero.title')}
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Fast, secure, and digital application process for visitors to the Kurdistan Region of Iraq
+              {t('hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/apply/form"
+                href={`/${locale}/apply/form`}
                 className="bg-blue-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 transition shadow-lg"
               >
-                Apply Now
+                {t('hero.applyNow')}
               </Link>
               <Link
-                href="/track"
+                href={`/${locale}/track`}
                 className="bg-white text-blue-900 px-8 py-4 rounded-lg font-semibold border-2 border-blue-900 hover:bg-blue-50 transition"
               >
-                Track Application
+                {t('hero.trackApplication')}
               </Link>
             </div>
           </div>
@@ -81,10 +82,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Why Choose KRG e-Visit?
+              {t('features.title')}
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Experience the future of immigration services with our digital platform
+              {t('features.subtitle')}
             </p>
           </div>
 
@@ -97,10 +98,10 @@ export default function HomePage() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                Fast Processing
+                {t('features.fastProcessing.title')}
               </h3>
               <p className="text-gray-600">
-                Get your permit decision within 72 hours of submission
+                {t('features.fastProcessing.description')}
               </p>
             </div>
 
@@ -111,10 +112,10 @@ export default function HomePage() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                Secure & Private
+                {t('features.secure.title')}
               </h3>
               <p className="text-gray-600">
-                Your data is protected with enterprise-grade security
+                {t('features.secure.description')}
               </p>
             </div>
 
@@ -125,10 +126,10 @@ export default function HomePage() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                24/7 Support
+                {t('features.support.title')}
               </h3>
               <p className="text-gray-600">
-                Get help anytime through our support channels
+                {t('features.support.description')}
               </p>
             </div>
           </div>
@@ -140,10 +141,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Simple 4-Step Process
+              {t('process.title')}
             </h2>
             <p className="text-xl text-gray-600">
-              Complete your application in just a few minutes
+              {t('process.subtitle')}
             </p>
           </div>
 
@@ -153,10 +154,10 @@ export default function HomePage() {
                 1
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Fill Application
+                {t('process.step1.title')}
               </h3>
               <p className="text-gray-600">
-                Provide your personal and visit information
+                {t('process.step1.description')}
               </p>
             </div>
 
@@ -165,10 +166,10 @@ export default function HomePage() {
                 2
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Upload Documents
+                {t('process.step2.title')}
               </h3>
               <p className="text-gray-600">
-                Submit required documents securely
+                {t('process.step2.description')}
               </p>
             </div>
 
@@ -177,10 +178,10 @@ export default function HomePage() {
                 3
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Phone Verification
+                {t('process.step3.title')}
               </h3>
               <p className="text-gray-600">
-                Verify your phone number with OTP
+                {t('process.step3.description')}
               </p>
             </div>
 
@@ -189,10 +190,10 @@ export default function HomePage() {
                 4
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Track & Receive
+                {t('process.step4.title')}
               </h3>
               <p className="text-gray-600">
-                Track progress and receive your permit
+                {t('process.step4.description')}
               </p>
             </div>
           </div>
@@ -211,37 +212,37 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold">KRG e-Visit</h3>
-                  <p className="text-sm text-gray-300">Digital Immigration Services</p>
+                  <h3 className="text-lg font-bold">{t('footer.title')}</h3>
+                  <p className="text-sm text-gray-300">{t('footer.subtitle')}</p>
                 </div>
               </div>
               <p className="text-gray-300 text-sm">
-                Official digital immigration platform of the Kurdistan Regional Government
+                {t('footer.description')}
               </p>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Services</h4>
+              <h4 className="text-lg font-semibold mb-4">{t('footer.services.title')}</h4>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li><Link href="/apply/form" className="hover:text-white transition">Apply for Permit</Link></li>
-                <li><Link href="/track" className="hover:text-white transition">Track Application</Link></li>
-                <li><Link href="/government" className="hover:text-white transition">Government Portal</Link></li>
-                <li><Link href="/support" className="hover:text-white transition">Support Center</Link></li>
+                <li><Link href={`/${locale}/apply/form`} className="hover:text-white transition">{t('footer.services.apply')}</Link></li>
+                <li><Link href={`/${locale}/track`} className="hover:text-white transition">{t('footer.services.track')}</Link></li>
+                <li><Link href={`/${locale}/government`} className="hover:text-white transition">{t('header.nav.government')}</Link></li>
+                <li><Link href={`/${locale}/support`} className="hover:text-white transition">{t('footer.services.support')}</Link></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Contact Us</h4>
+              <h4 className="text-lg font-semibold mb-4">{t('footer.contact.title')}</h4>
               <div className="space-y-2 text-sm text-gray-300">
-                <p>Council of Ministers, 44001 Erbil</p>
-                <p>Kurdistan Region, Iraq</p>
-                <p>+964 750 123 4567</p>
-                <p>evisit@krg.gov.krd</p>
+                <p>{t('footer.contact.address')}</p>
+                <p>{t('footer.contact.region')}</p>
+                <p>{t('footer.contact.phone')}</p>
+                <p>{t('footer.contact.email')}</p>
               </div>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Follow Us</h4>
+              <h4 className="text-lg font-semibold mb-4">{t('footer.follow.title')}</h4>
               <div className="flex space-x-4">
                 <a href="#" className="text-gray-300 hover:text-white transition">
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -258,7 +259,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2025 Kurdistan Regional Government. All rights reserved.</p>
+            <p>{t('footer.copyright')}</p>
           </div>
         </div>
       </footer>

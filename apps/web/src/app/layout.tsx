@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import HtmlAttributes from "../components/HtmlAttributes";
 
 export const metadata: Metadata = {
   title: "KRG e-Visit System",
@@ -11,5 +12,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return children;
+  return (
+    <html lang="en" dir="ltr">
+      <body>
+        <HtmlAttributes />
+        {children}
+      </body>
+    </html>
+  );
 }

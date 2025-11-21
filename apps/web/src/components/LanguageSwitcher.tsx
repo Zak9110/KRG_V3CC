@@ -10,6 +10,17 @@ export default function LanguageSwitcher() {
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
+  // Hide language switcher on government pages (English-only)
+  const isGovernmentPage = pathname?.includes('/login') || 
+                          pathname?.includes('/government') || 
+                          pathname?.includes('/dashboard') || 
+                          pathname?.includes('/checkpoint') ||
+                          pathname?.includes('/unauthorized');
+
+  if (isGovernmentPage) {
+    return null;
+  }
+
   const toggleLanguage = () => {
     const newLocale = locale === 'en' ? 'ar' : 'en';
     
@@ -23,8 +34,8 @@ export default function LanguageSwitcher() {
       
       // Navigate to the new locale
       const newPath = pathname.replace(`/${locale}`, `/${newLocale}`);
-      router.push(newPath);
-      router.refresh();
+      // Use window.location for a full page reload to ensure translations load correctly
+      window.location.href = newPath;
     });
   };
 

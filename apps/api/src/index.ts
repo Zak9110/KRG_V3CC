@@ -60,10 +60,14 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit login attempts
+  max: env.NODE_ENV === 'development' ? 100 : 10, // Higher limit in development
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting in development for localhost
+    return env.NODE_ENV === 'development' && req.ip === '::1';
+  },
 });
 
 app.use('/api/', generalLimiter);

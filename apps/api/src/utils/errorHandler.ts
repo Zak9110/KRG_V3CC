@@ -153,3 +153,4 @@ export const errors = {
   EXTERNAL_SERVICE_ERROR: (message = 'External service unavailable') =>
     createError(message, 502, 'EXTERNAL_SERVICE_ERROR'),
 };
+

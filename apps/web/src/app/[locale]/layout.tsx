@@ -10,16 +10,17 @@ export default async function LocaleLayout({
   children: React.ReactNode;
   params: {locale: string};
 }) {
-  const messages = await getMessages();
+  // Ensure locale is valid (fallback to 'en')
+  const validLocale = locale === 'ar' ? 'ar' : 'en';
+  
+  // Load messages for the current locale
+  // Explicitly pass locale to ensure correct messages are loaded
+  const messages = await getMessages({ locale: validLocale });
 
   return (
-    <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <body>
-        <NextIntlClientProvider messages={messages}>
-          <LanguageSwitcher />
-          {children}
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages} locale={validLocale} key={validLocale}>
+      <LanguageSwitcher />
+      {children}
+    </NextIntlClientProvider>
   );
 }

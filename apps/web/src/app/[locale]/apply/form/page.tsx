@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 type Step = 'phone' | 'otp' | 'form' | 'success';
 
@@ -34,6 +35,8 @@ const KRG_GOVERNORATES = [
 
 export default function ApplyFormPage() {
   const router = useRouter();
+  const t = useTranslations('apply');
+  const locale = useLocale();
   const [step, setStep] = useState<Step>('phone');
   const [loading, setLoading] = useState(false);
 
@@ -92,7 +95,7 @@ export default function ApplyFormPage() {
   // Step 1: Send OTP
   const handleSendOTP = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      alert('Please enter a valid phone number');
+      alert(t('errors.invalidPhone'));
       return;
     }
 
@@ -127,11 +130,11 @@ export default function ApplyFormPage() {
         }
 
         setStep('otp');
-      } else {
-        alert('Error: ' + (data.error?.message || 'Failed to send OTP'));
-      }
+        } else {
+          alert(t('errors.sendOtpFailed') + ': ' + (data.error?.message || ''));
+        }
     } catch (error) {
-      alert('Error sending OTP. Please check your connection.');
+      alert(t('errors.connectionError'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +143,7 @@ export default function ApplyFormPage() {
   // Step 2: Verify OTP
   const handleVerifyOTP = async () => {
     if (!otpCode || otpCode.length !== 6) {
-      alert('Please enter the 6-digit code');
+      alert(t('otp.label'));
       return;
     }
 
@@ -159,13 +162,13 @@ export default function ApplyFormPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert('✅ Phone verified successfully!');
+        alert(t('otp.verified'));
         setStep('form');
       } else {
-        alert('❌ ' + (data.error?.message || 'Invalid or expired code'));
+        alert(t('otp.invalid'));
       }
     } catch (error) {
-      alert('Error verifying OTP. Please try again.');
+      alert(t('errors.verifyOtpFailed'));
     } finally {
       setLoading(false);
     }
@@ -177,42 +180,42 @@ export default function ApplyFormPage() {
 
     // Validate required fields
     if (!formData.fullName.trim()) {
-      alert('Please enter your full name');
+      alert(t('form.fullName') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.nationalId.trim()) {
-      alert('Please enter your National ID number');
+      alert(t('form.nationalId') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.dateOfBirth) {
-      alert('Please enter your date of birth');
+      alert(t('form.dateOfBirth') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.originGovernorate) {
-      alert('Please select your origin governorate');
+      alert(t('form.originGovernorate') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.destinationGovernorate) {
-      alert('Please select your destination governorate');
+      alert(t('form.destinationGovernorate') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.visitPurpose) {
-      alert('Please select your visit purpose');
+      alert(t('form.visitPurpose') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.visitStartDate) {
-      alert('Please select your visit start date');
+      alert(t('form.visitStartDate') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.visitEndDate) {
-      alert('Please select your visit end date');
+      alert(t('form.visitEndDate') + ' ' + t('common.required'));
       return;
     }
 
@@ -220,30 +223,31 @@ export default function ApplyFormPage() {
     const startDate = new Date(formData.visitStartDate);
     const endDate = new Date(formData.visitEndDate);
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to compare dates only
 
     if (startDate <= today) {
-      alert('Visit start date must be in the future');
+      alert(t('errors.dateMustBeFuture'));
       return;
     }
 
     if (endDate <= startDate) {
-      alert('Visit end date must be after the start date');
+      alert(t('errors.endDateAfterStart'));
       return;
     }
 
     // Validate required files
     if (!formData.headshotFile) {
-      alert('Please upload your headshot photo');
+      alert(t('form.documents.headshot') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.nationalIdFile) {
-      alert('Please upload your National ID (front) photo');
+      alert(t('form.documents.nationalIdFront') + ' ' + t('common.required'));
       return;
     }
 
     if (!formData.nationalIdBackFile) {
-      alert('Please upload your National ID (back) photo');
+      alert(t('form.documents.nationalIdBack') + ' ' + t('common.required'));
       return;
     }
 
@@ -285,10 +289,28 @@ export default function ApplyFormPage() {
         })
       });
 
+      // Check if response is ok
+      if (!applicationResponse.ok) {
+        let errorMessage = 'Network error or server unavailable';
+        try {
+          const errorData = await applicationResponse.json();
+          errorMessage = errorData.error?.message || errorData.message || `Server error (${applicationResponse.status})`;
+        } catch (e) {
+          // If JSON parsing fails, use default message
+          errorMessage = `Server error (${applicationResponse.status})`;
+        }
+        console.error('Application creation failed:', { status: applicationResponse.status, error: errorMessage });
+        alert(`${t('errors.submitFailed')}: ${errorMessage}`);
+        setLoading(false);
+        return;
+      }
+
       const applicationData = await applicationResponse.json();
 
       if (!applicationData.success) {
-        alert('Error: ' + (applicationData.error?.message || 'Failed to submit application'));
+        console.error('Application creation failed:', applicationData);
+        const errorMsg = applicationData.error?.message || applicationData.error?.code || 'Unknown error';
+        alert(`${t('errors.submitFailed')}: ${errorMsg}`);
         setLoading(false);
         return;
       }
@@ -349,8 +371,10 @@ export default function ApplyFormPage() {
       setReferenceNumber(applicationData.data.referenceNumber);
       setStep('success');
 
-    } catch (error) {
-      alert('Error submitting application. Please try again.');
+    } catch (error: any) {
+      console.error('Application submission error:', error);
+      const errorMessage = error?.message || 'Network error. Please check your connection.';
+      alert(t('errors.submitFailed') + ': ' + errorMessage + '. ' + t('errors.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -376,15 +400,15 @@ export default function ApplyFormPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
-              <p className="text-gray-600">Enter your phone number to receive a verification code</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('phone.title')}</h1>
+              <p className="text-gray-600">{t('phone.description')}</p>
             </div>
 
             {/* Phone Input */}
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  {t('phone.label')}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-gray-500">+964</span>
@@ -392,13 +416,13 @@ export default function ApplyFormPage() {
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="7501234567"
+                    placeholder={t('phone.placeholder')}
                     className="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     maxLength={10}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Example: 7501234567 (without leading 0)
+                  {t('phone.example')}
                 </p>
               </div>
 
@@ -407,14 +431,14 @@ export default function ApplyFormPage() {
                 disabled={loading || !phoneNumber}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Sending...' : 'Send Verification Code'}
+                {loading ? t('phone.sending') : t('phone.sendCode')}
               </button>
 
               <button
-                onClick={() => router.push('/apply')}
+                onClick={() => router.push(`/${locale}/apply`)}
                 className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
               >
-                Back to Landing Page
+                {t('phone.backToLanding')}
               </button>
             </div>
           </div>
@@ -436,16 +460,16 @@ export default function ApplyFormPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Enter Verification Code</h1>
-              <p className="text-gray-600">We sent a 6-digit code to</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('otp.title')}</h1>
+              <p className="text-gray-600">{t('otp.sentTo')}</p>
               <p className="text-blue-600 font-semibold">{verifiedPhone}</p>
             </div>
 
             {/* Development OTP Display */}
             {developmentOtp && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-semibold text-yellow-800">🔧 Development Mode</p>
-                <p className="text-xs text-yellow-700 mt-1">Your OTP: <span className="font-mono font-bold text-lg">{developmentOtp}</span></p>
+                <p className="text-sm font-semibold text-yellow-800">{t('otp.devMode')}</p>
+                <p className="text-xs text-yellow-700 mt-1">{t('otp.yourOtp')} <span className="font-mono font-bold text-lg">{developmentOtp}</span></p>
               </div>
             )}
 
@@ -453,13 +477,13 @@ export default function ApplyFormPage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Verification Code
+                  {t('otp.label')}
                 </label>
                 <input
                   type="text"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
+                  placeholder={t('otp.placeholder')}
                   maxLength={6}
                   className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -470,19 +494,19 @@ export default function ApplyFormPage() {
                 disabled={loading || otpCode.length !== 6}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Verifying...' : 'Verify Code'}
+                {loading ? t('otp.verifying') : t('otp.verify')}
               </button>
 
               {countdown > 0 ? (
                 <p className="text-center text-sm text-gray-500">
-                  Resend code in {countdown}s
+                  {t('otp.resendIn')} {countdown}s
                 </p>
               ) : (
                 <button
                   onClick={handleSendOTP}
                   className="w-full text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Resend Code
+                  {t('otp.resend')}
                 </button>
               )}
 
@@ -494,7 +518,7 @@ export default function ApplyFormPage() {
                 }}
                 className="w-full text-gray-600 hover:text-gray-700 font-medium"
               >
-                ← Change Phone Number
+                {t('otp.changePhone')}
               </button>
             </div>
           </div>
@@ -511,19 +535,19 @@ export default function ApplyFormPage() {
           <div className="bg-white rounded-2xl shadow-xl p-4 lg:p-8">
             {/* Header */}
             <div className="mb-6 lg:mb-8">
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">e-Visit Application</h1>
-              <p className="text-sm lg:text-base text-gray-600">✅ Phone verified: {verifiedPhone}</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">{t('form.title')}</h1>
+              <p className="text-sm lg:text-base text-gray-600">{t('form.phoneVerified')} {verifiedPhone}</p>
             </div>
 
             <form onSubmit={handleSubmitApplication} className="space-y-6 lg:space-y-8">
             {/* Personal Information */}
             <div className="border-b pb-4 lg:pb-6">
-              <h2 className="text-lg lg:text-xl font-semibold text-gray-800 mb-4">Personal Information</h2>
+              <h2 className="text-lg lg:text-xl font-semibold text-gray-800 mb-4">{t('form.personalInfo')}</h2>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
+                    {t('form.fullName')}
                   </label>
                   <input
                     type="text"
@@ -532,13 +556,13 @@ export default function ApplyFormPage() {
                     value={formData.fullName}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your full name"
+                    placeholder={t('form.fullNamePlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mother's Full Name
+                    {t('form.motherFullName')}
                   </label>
                   <input
                     type="text"
@@ -546,13 +570,13 @@ export default function ApplyFormPage() {
                     value={formData.motherFullName}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter mother's full name"
+                    placeholder={t('form.motherFullNamePlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Gender *
+                    {t('form.gender')}
                   </label>
                   <select
                     name="gender"
@@ -561,14 +585,14 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
+                    <option value="MALE">{t('form.male')}</option>
+                    <option value="FEMALE">{t('form.female')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    National ID *
+                    {t('form.nationalId')}
                   </label>
                   <input
                     type="text"
@@ -577,13 +601,13 @@ export default function ApplyFormPage() {
                     value={formData.nationalId}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter national ID"
+                    placeholder={t('form.nationalIdPlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
+                    {t('form.dateOfBirth')}
                   </label>
                   <input
                     type="date"
@@ -597,7 +621,7 @@ export default function ApplyFormPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email (Optional)
+                    {t('form.email')}
                   </label>
                   <input
                     type="email"
@@ -605,14 +629,14 @@ export default function ApplyFormPage() {
                     value={formData.email}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="your@email.com"
+                    placeholder={t('form.emailPlaceholder')}
                   />
                 </div>
 
                 {/* Enhanced Visitor Profiling */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Occupation (Optional)
+                    {t('form.occupation')}
                   </label>
                   <select
                     name="occupation"
@@ -620,21 +644,21 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select occupation</option>
-                    <option value="STUDENT">Student</option>
-                    <option value="BUSINESS">Business Professional</option>
-                    <option value="TOURISM">Tourism/Hospitality</option>
-                    <option value="MEDICAL">Medical Professional</option>
-                    <option value="ENGINEERING">Engineering</option>
-                    <option value="TEACHING">Teaching/Education</option>
-                    <option value="GOVERNMENT">Government Employee</option>
-                    <option value="OTHER">Other</option>
+                    <option value="">{t('form.selectOccupation')}</option>
+                    <option value="STUDENT">{t('form.occupations.STUDENT')}</option>
+                    <option value="BUSINESS">{t('form.occupations.BUSINESS')}</option>
+                    <option value="TOURISM">{t('form.occupations.TOURISM')}</option>
+                    <option value="MEDICAL">{t('form.occupations.MEDICAL')}</option>
+                    <option value="ENGINEERING">{t('form.occupations.ENGINEERING')}</option>
+                    <option value="TEACHING">{t('form.occupations.TEACHING')}</option>
+                    <option value="GOVERNMENT">{t('form.occupations.GOVERNMENT')}</option>
+                    <option value="OTHER">{t('form.occupations.OTHER')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Education Level (Optional)
+                    {t('form.educationLevel')}
                   </label>
                   <select
                     name="educationLevel"
@@ -642,18 +666,18 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select education level</option>
-                    <option value="PRIMARY">Primary School</option>
-                    <option value="SECONDARY">Secondary School</option>
-                    <option value="UNIVERSITY">University</option>
-                    <option value="POSTGRADUATE">Postgraduate</option>
-                    <option value="NONE">No Formal Education</option>
+                    <option value="">{t('form.selectEducation')}</option>
+                    <option value="PRIMARY">{t('form.education.PRIMARY')}</option>
+                    <option value="SECONDARY">{t('form.education.SECONDARY')}</option>
+                    <option value="UNIVERSITY">{t('form.education.UNIVERSITY')}</option>
+                    <option value="POSTGRADUATE">{t('form.education.POSTGRADUATE')}</option>
+                    <option value="NONE">{t('form.education.NONE')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monthly Income (Optional)
+                    {t('form.monthlyIncome')}
                   </label>
                   <select
                     name="monthlyIncome"
@@ -661,19 +685,19 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select income range</option>
-                    <option value="UNDER_500">Under $500</option>
-                    <option value="500_1000">$500 - $1,000</option>
-                    <option value="1000_2000">$1,000 - $2,000</option>
-                    <option value="2000_5000">$2,000 - $5,000</option>
-                    <option value="OVER_5000">Over $5,000</option>
-                    <option value="PREFER_NOT_SAY">Prefer not to say</option>
+                    <option value="">{t('form.selectIncome')}</option>
+                    <option value="UNDER_500">{t('form.income.UNDER_500')}</option>
+                    <option value="500_1000">{t('form.income.500_1000')}</option>
+                    <option value="1000_2000">{t('form.income.1000_2000')}</option>
+                    <option value="2000_5000">{t('form.income.2000_5000')}</option>
+                    <option value="OVER_5000">{t('form.income.OVER_5000')}</option>
+                    <option value="PREFER_NOT_SAY">{t('form.income.PREFER_NOT_SAY')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Previous Visits to Kurdistan (Optional)
+                    {t('form.previousVisits')}
                   </label>
                   <input
                     type="number"
@@ -682,7 +706,7 @@ export default function ApplyFormPage() {
                     value={formData.previousVisits}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
+                    placeholder={t('form.previousVisitsPlaceholder')}
                   />
                 </div>
               </div>
@@ -690,12 +714,12 @@ export default function ApplyFormPage() {
 
             {/* Visit Details */}
             <div className="border-b pb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Visit Details</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('form.visitDetails')}</h2>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Origin Governorate *
+                    {t('form.originGovernorate')}
                   </label>
                   <select
                     name="originGovernorate"
@@ -704,7 +728,7 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select your governorate</option>
+                    <option value="">{t('form.selectOrigin')}</option>
                     {IRAQ_GOVERNORATES.map(gov => (
                       <option key={gov} value={gov}>{gov}</option>
                     ))}
@@ -713,7 +737,7 @@ export default function ApplyFormPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Destination in KRG *
+                    {t('form.destinationGovernorate')}
                   </label>
                   <select
                     name="destinationGovernorate"
@@ -722,7 +746,7 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select destination</option>
+                    <option value="">{t('form.selectDestination')}</option>
                     {KRG_GOVERNORATES.map(gov => (
                       <option key={gov} value={gov}>{gov}</option>
                     ))}
@@ -731,7 +755,7 @@ export default function ApplyFormPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit Purpose *
+                    {t('form.visitPurpose')}
                   </label>
                   <select
                     name="visitPurpose"
@@ -740,18 +764,18 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="TOURISM">Tourism</option>
-                    <option value="BUSINESS">Business</option>
-                    <option value="FAMILY_VISIT">Family Visit</option>
-                    <option value="MEDICAL">Medical</option>
-                    <option value="EDUCATION">Education</option>
-                    <option value="OTHER">Other</option>
+                    <option value="TOURISM">{t('purposes.TOURISM')}</option>
+                    <option value="BUSINESS">{t('purposes.BUSINESS')}</option>
+                    <option value="FAMILY_VISIT">{t('purposes.FAMILY_VISIT')}</option>
+                    <option value="MEDICAL">{t('purposes.MEDICAL')}</option>
+                    <option value="EDUCATION">{t('purposes.EDUCATION')}</option>
+                    <option value="OTHER">{t('purposes.OTHER')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit Start Date *
+                    {t('form.visitStartDate')}
                   </label>
                   <input
                     type="date"
@@ -765,7 +789,7 @@ export default function ApplyFormPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Visit End Date *
+                    {t('form.visitEndDate')}
                   </label>
                   <input
                     type="date"
@@ -780,7 +804,7 @@ export default function ApplyFormPage() {
                 {/* Economic Impact Tracking */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Accommodation Type (Optional)
+                    {t('form.accommodationType')}
                   </label>
                   <select
                     name="accommodationType"
@@ -788,18 +812,18 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select accommodation type</option>
-                    <option value="HOTEL">Hotel/Resort</option>
-                    <option value="RENTAL">Rental Apartment</option>
-                    <option value="FAMILY_HOME">Family/Friends Home</option>
-                    <option value="HOSTEL">Hostel/Backpacker</option>
-                    <option value="OTHER">Other</option>
+                    <option value="">{t('form.selectAccommodation')}</option>
+                    <option value="HOTEL">{t('form.accommodationTypes.HOTEL')}</option>
+                    <option value="RENTAL">{t('form.accommodationTypes.RENTAL')}</option>
+                    <option value="FAMILY_HOME">{t('form.accommodationTypes.FAMILY_HOME')}</option>
+                    <option value="HOSTEL">{t('form.accommodationTypes.HOSTEL')}</option>
+                    <option value="OTHER">{t('form.accommodationTypes.OTHER')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estimated Daily Spending (USD) (Optional)
+                    {t('form.dailySpending')}
                   </label>
                   <input
                     type="number"
@@ -809,21 +833,21 @@ export default function ApplyFormPage() {
                     value={formData.dailySpending}
                     onChange={handleChange}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="50.00"
+                    placeholder={t('form.dailySpendingPlaceholder')}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Approximate daily expenses for food, transport, activities, etc.
+                    {t('form.dailySpendingNote')}
                   </p>
                 </div>
 
                 {/* Document Upload Section */}
                 <div className="md:col-span-2">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    📄 Required Documents
+                    {t('form.documents.title')}
                   </h3>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-blue-800">
-                      Please upload clear photos of your documents (JPEG, PNG, or PDF, max 5MB each)
+                      {t('form.documents.note')}
                     </p>
                   </div>
 
@@ -831,7 +855,7 @@ export default function ApplyFormPage() {
                     {/* Headshot Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        📸 Headshot Photo *
+                        {t('form.documents.headshot')}
                       </label>
                       <input
                         type="file"
@@ -850,13 +874,13 @@ export default function ApplyFormPage() {
                           ✅ {formData.headshotFile.name} ({(formData.headshotFile.size / 1024).toFixed(1)} KB)
                         </p>
                       )}
-                      <p className="mt-1 text-xs text-gray-500">Recent passport-style photo</p>
+                      <p className="mt-1 text-xs text-gray-500">{t('form.documents.headshotNote')}</p>
                     </div>
 
                     {/* National ID Front Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🪪 National ID (Front) *
+                        {t('form.documents.nationalIdFront')}
                       </label>
                       <input
                         type="file"
@@ -879,7 +903,7 @@ export default function ApplyFormPage() {
                     {/* National ID Back Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🪪 National ID (Back) *
+                        {t('form.documents.nationalIdBack')}
                       </label>
                       <input
                         type="file"
@@ -903,7 +927,7 @@ export default function ApplyFormPage() {
                     {/* Passport Upload (Optional) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        📕 Passport Photo (Optional)
+                        {t('form.documents.passport')}
                       </label>
                       <input
                         type="file"
@@ -927,7 +951,7 @@ export default function ApplyFormPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Declared Accommodation
+                    {t('form.declaredAccommodation')}
                   </label>
                   <textarea
                     name="declaredAccommodation"
@@ -935,7 +959,7 @@ export default function ApplyFormPage() {
                     onChange={handleChange}
                     rows={3}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Hotel name and address or host information"
+                    placeholder={t('form.accommodationPlaceholder')}
                   />
                 </div>
               </div>
@@ -945,17 +969,17 @@ export default function ApplyFormPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 type="button"
-                onClick={() => router.push('/apply')}
+                onClick={() => router.push(`/${locale}/apply`)}
                 className="flex-1 px-6 py-3 text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
               >
-                Back to Landing Page
+                {t('form.backToLanding')}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 px-6 py-3 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
               >
-                {loading ? 'Submitting...' : 'Submit Application'}
+                {loading ? t('form.submitting') : t('form.submit')}
               </button>
             </div>
           </form>
@@ -978,45 +1002,45 @@ export default function ApplyFormPage() {
               </svg>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted!</h1>
-            <p className="text-gray-600 mb-6">Your e-Visit application has been received and is being processed.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">{t('success.title')}</h1>
+            <p className="text-gray-600 mb-6">{t('success.description')}</p>
 
             {/* Reference Number */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-8">
-              <p className="text-sm text-gray-600 mb-2">Your Reference Number</p>
+              <p className="text-sm text-gray-600 mb-2">{t('success.referenceNumber')}</p>
               <p className="text-3xl font-bold text-blue-600 tracking-wider">{referenceNumber}</p>
-              <p className="text-xs text-gray-500 mt-2">Save this number to track your application</p>
+              <p className="text-xs text-gray-500 mt-2">{t('success.saveReference')}</p>
             </div>
 
             {/* SMS Notification */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
               <p className="text-sm text-green-800">
-                📱 We've sent a confirmation SMS to <strong>{verifiedPhone}</strong>
+                {t('success.smsSent')} <strong>{verifiedPhone}</strong>
               </p>
               <p className="text-xs text-green-700 mt-1">
-                You'll receive updates about your application via SMS
+                {t('success.smsUpdates')}
               </p>
             </div>
 
             {/* Next Steps */}
             <div className="text-left mb-8">
-              <h2 className="font-bold text-gray-900 mb-4">What happens next?</h2>
+              <h2 className="font-bold text-gray-900 mb-4">{t('success.nextSteps')}</h2>
               <ul className="space-y-3 text-sm text-gray-600">
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 font-bold">1.</span>
-                  <span>Your application will be reviewed within 72 hours</span>
+                  <span>{t('success.step1')}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 font-bold">2.</span>
-                  <span>You'll receive SMS updates about your application status</span>
+                  <span>{t('success.step2')}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 font-bold">3.</span>
-                  <span>Once approved, download your QR code permit</span>
+                  <span>{t('success.step3')}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-blue-600 font-bold">4.</span>
-                  <span>Show the QR code at the checkpoint when entering Kurdistan</span>
+                  <span>{t('success.step4')}</span>
                 </li>
               </ul>
             </div>
@@ -1024,16 +1048,16 @@ export default function ApplyFormPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => router.push(`/track?ref=${referenceNumber}`)}
+                onClick={() => router.push(`/${locale}/track?ref=${referenceNumber}`)}
                 className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
               >
-                Track Application
+                {t('success.trackApplication')}
               </button>
               <button
-                onClick={() => router.push('/apply')}
+                onClick={() => router.push(`/${locale}/apply`)}
                 className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
               >
-                Return to Landing Page
+                {t('success.returnToLanding')}
               </button>
             </div>
           </div>

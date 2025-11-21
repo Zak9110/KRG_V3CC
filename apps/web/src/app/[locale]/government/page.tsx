@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useRouter, usePathname } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 
 function GovernmentRedirect({ user }: { user: { id: string; email: string; fullName: string; role: string } }) {
   const router = useRouter();
-  const locale = useLocale();
+  const pathname = usePathname();
+  // Extract locale from pathname (e.g., /en/... or /ar/...)
+  const locale = pathname?.split('/')[1] || 'en';
 
   useEffect(() => {
     // Redirect to appropriate dashboard based on role

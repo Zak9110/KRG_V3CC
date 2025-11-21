@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 export default function ResidencyLandingPage() {
   const t = useTranslations('landing')
+  const locale = useLocale()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -27,13 +28,13 @@ export default function ResidencyLandingPage() {
 
             {/* Navigation */}
             <nav className="hidden md:flex space-x-8">
-              <Link href="/" className="text-white hover:text-blue-200 transition">
+              <Link href={`/${locale}`} className="text-white hover:text-blue-200 transition">
                 Home
               </Link>
-              <Link href="/track" className="text-white hover:text-blue-200 transition">
+              <Link href={`/${locale}/track`} className="text-white hover:text-blue-200 transition">
                 Track Application
               </Link>
-              <Link href="/contact" className="text-white hover:text-blue-200 transition">
+              <Link href={`/${locale}/contact`} className="text-white hover:text-blue-200 transition">
                 Contact
               </Link>
             </nav>
@@ -60,13 +61,13 @@ export default function ResidencyLandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/apply/form"
+                href={`/${locale}/apply/form`}
                 className="bg-blue-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 transition shadow-lg"
               >
                 Apply Now
               </Link>
               <Link
-                href="/track"
+                href={`/${locale}/track`}
                 className="bg-white text-blue-900 px-8 py-4 rounded-lg font-semibold border-2 border-blue-900 hover:bg-blue-50 transition"
               >
                 Track Application
@@ -296,10 +297,10 @@ export default function ResidencyLandingPage() {
             <div>
               <h4 className="text-lg font-semibold mb-4">Services</h4>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li><Link href="/apply/form" className="hover:text-white transition">Apply for Permit</Link></li>
-                <li><Link href="/track" className="hover:text-white transition">Track Application</Link></li>
-                <li><Link href="/renewal" className="hover:text-white transition">Permit Renewal</Link></li>
-                <li><Link href="/support" className="hover:text-white transition">Support Center</Link></li>
+                <li><Link href={`/${locale}/apply/form`} className="hover:text-white transition">Apply for Permit</Link></li>
+                <li><Link href={`/${locale}/track`} className="hover:text-white transition">Track Application</Link></li>
+                <li><Link href={`/${locale}/renewal`} className="hover:text-white transition">Permit Renewal</Link></li>
+                <li><Link href={`/${locale}/support`} className="hover:text-white transition">Support Center</Link></li>
               </ul>
             </div>
 
