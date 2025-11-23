@@ -226,6 +226,31 @@
       "ACTIVE": "نشط",
       "EXPIRED": "منتهي الصلاحية",
       "EXITED": "خرج"
+    },
+    "residencyCard": {
+      "title": "إقليم كردستان",
+      "ministry": "وزارة الداخلية",
+      "permitType": "تصريح الإقامة الإلكتروني",
+      "nationality": "الجنسية",
+      "dateOfBirth": "تاريخ الميلاد",
+      "fullName": "الاسم الكامل",
+      "nationalId": "الهوية الوطنية",
+      "destination": "الوجهة",
+      "purpose": "الغرض",
+      "validUntil": "صالح حتى",
+      "validFrom": "صالح من",
+      "referenceNumber": "الرقم المرجعي",
+      "approved": "موافق عليه",
+      "officialText": "هذا تصريح إقامة إلكتروني رسمي صادر عن حكومة إقليم كردستان",
+      "verifyUrl": "تحقق من الأصالة على: evisit.krg.gov",
+      "downloadImage": "تحميل كصورة",
+      "downloadPDF": "تحميل كملف PDF",
+      "instructions": "كيفية استخدام بطاقة الإقامة الرقمية",
+      "instruction1": "قم بتنزيل وحفظ هذه البطاقة على جهازك",
+      "instruction2": "اعرضها عند نقاط التفتيش عند الطلب",
+      "instruction3": "احتفظ بنسخة رقمية على هاتفك للوصول السهل",
+      "instruction4": "يمكن مسح رمز QR للتحقق من الأصالة",
+      "instruction5": "صالح فقط خلال التواريخ الموضحة أعلاه"
     }
   },
   "checkpoint": {

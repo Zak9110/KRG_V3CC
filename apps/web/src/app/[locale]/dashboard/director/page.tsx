@@ -492,7 +492,7 @@ export default function ProfessionalDirectorDashboard() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className={`bg-white shadow-lg transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`relative bg-white shadow-lg transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="p-4 border-b flex items-center justify-between">
           {sidebarOpen && <h2 className="text-xl font-bold text-gray-800">Analytics</h2>}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -521,7 +521,7 @@ export default function ProfessionalDirectorDashboard() {
         </nav>
         
         {/* Logout Button */}
-        <div className="absolute bottom-0 w-full p-4 border-t border-gray-200 bg-white">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
           <button
             onClick={() => {
               localStorage.removeItem('token')
@@ -530,10 +530,10 @@ export default function ProfessionalDirectorDashboard() {
               const locale = pathname?.split('/')[1] || 'en'
               router.push(`/${locale}/government`)
             }}
-            className={`w-full flex items-center ${sidebarOpen ? 'justify-center gap-2' : 'justify-center'} px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition`}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
           >
             <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span>Logout</span>}
+            <span>Logout</span>
           </button>
         </div>
       </aside>

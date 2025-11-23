@@ -302,15 +302,15 @@ async function main() {
           exitDate.setDate(exitDate.getDate() + Math.floor(Math.random() * 20) + 1);
           
           await prisma.entryExitLog.create({
-            data: {
+    data: {
               applicationId: app.id,
               logType: 'EXIT',
               checkpointName: 'Erbil International Airport',
               checkpointLocation: '36.1911,44.0092',
               officerId: checkpointOfficer.id,
               recordedAt: exitDate,
-            },
-          });
+    },
+  });
         }
       }
       

@@ -122,8 +122,8 @@ export default function TrackPage() {
               </div>
             </div>
 
-            {/* Digital Residency Card - Show only when APPROVED */}
-            {application.status === 'APPROVED' && (
+            {/* Digital Residency Card - Show when APPROVED or ACTIVE */}
+            {(application.status === 'APPROVED' || application.status === 'ACTIVE') && (
               <DigitalResidencyCard application={application} />
             )}
           </div>

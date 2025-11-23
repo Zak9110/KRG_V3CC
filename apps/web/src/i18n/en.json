@@ -226,6 +226,31 @@
       "ACTIVE": "Active",
       "EXPIRED": "Expired",
       "EXITED": "Exited"
+    },
+    "residencyCard": {
+      "title": "Kurdistan Region",
+      "ministry": "Ministry of Interior",
+      "permitType": "Electronic Residency Permit",
+      "nationality": "Nationality",
+      "dateOfBirth": "Date of Birth",
+      "fullName": "Full Name",
+      "nationalId": "National ID",
+      "destination": "Destination",
+      "purpose": "Purpose",
+      "validUntil": "Valid Until",
+      "validFrom": "Valid From",
+      "referenceNumber": "Reference Number",
+      "approved": "Approved",
+      "officialText": "This is an official electronic residency permit issued by the Kurdistan Regional Government",
+      "verifyUrl": "Verify authenticity at: evisit.krg.gov",
+      "downloadImage": "Download as Image",
+      "downloadPDF": "Download as PDF",
+      "instructions": "How to Use Your Digital Residency Card",
+      "instruction1": "Download and save this card to your device",
+      "instruction2": "Present it at checkpoints when requested",
+      "instruction3": "Keep a digital copy on your phone for easy access",
+      "instruction4": "The QR code can be scanned to verify authenticity",
+      "instruction5": "Valid only during the dates shown above"
     }
   },
   "checkpoint": {

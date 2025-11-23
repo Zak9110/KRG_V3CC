@@ -140,18 +140,18 @@ router.post('/', async (req: Request, res: Response) => {
     // Send confirmation email (optional - don't fail if email service is not configured)
     try {
       if (email) {
-        await sendEmail({
-          to: email,
-          subject: 'KRG e-Visit Application Received',
-          html: `
-            <h2>Application Received</h2>
-            <p>Dear ${fullName},</p>
-            <p>Your e-Visit application has been received successfully.</p>
-            <p><strong>Reference Number:</strong> ${referenceNumber}</p>
-            <p>You can track your application status using this reference number.</p>
-            <p>Thank you for using KRG e-Visit System.</p>
-          `
-        });
+    await sendEmail({
+      to: email,
+      subject: 'KRG e-Visit Application Received',
+      html: `
+        <h2>Application Received</h2>
+        <p>Dear ${fullName},</p>
+        <p>Your e-Visit application has been received successfully.</p>
+        <p><strong>Reference Number:</strong> ${referenceNumber}</p>
+        <p>You can track your application status using this reference number.</p>
+        <p>Thank you for using KRG e-Visit System.</p>
+      `
+    });
       }
     } catch (emailError) {
       // Log email error but don't fail the application creation
@@ -800,15 +800,15 @@ router.get('/supervisor/daily', authMiddleware, roleMiddleware([UserRole.SUPERVI
 
     // Only filter by date if todayOnly is true
     if (todayOnly === 'true') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
       where.createdAt = {
         gte: today,
         lt: tomorrow
       };
-    }
+      }
 
     // Add status filter if provided
     if (status) {

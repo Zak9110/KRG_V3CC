@@ -1504,7 +1504,7 @@ function SupervisorApplicationsReview({ applications, stats, onRefresh, loading 
             <div>
               <p className="text-sm font-medium text-yellow-700">Pending Review</p>
               <p className="text-3xl font-bold text-yellow-900 mt-2">
-                {applicationStats.pending}
+                {stats?.pending ?? 0}
               </p>
               <p className="text-xs text-yellow-600 mt-1">Awaiting approval</p>
             </div>
@@ -1517,7 +1517,7 @@ function SupervisorApplicationsReview({ applications, stats, onRefresh, loading 
             <div>
               <p className="text-sm font-medium text-green-700">With Documents</p>
               <p className="text-3xl font-bold text-green-900 mt-2">
-                {applicationStats.withDocuments}
+                {stats?.withDocuments ?? 0}
               </p>
               <p className="text-xs text-green-600 mt-1">Have uploaded files</p>
             </div>
@@ -1530,7 +1530,7 @@ function SupervisorApplicationsReview({ applications, stats, onRefresh, loading 
             <div>
               <p className="text-sm font-medium text-orange-700">Pending Documents</p>
               <p className="text-3xl font-bold text-orange-900 mt-2">
-                {applicationStats.pendingDocuments}
+                {stats?.pendingDocuments ?? 0}
               </p>
               <p className="text-xs text-orange-600 mt-1">Additional docs needed</p>
             </div>
