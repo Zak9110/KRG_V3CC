@@ -97,6 +97,539 @@ export default function DigitalResidencyCard({ application }: DigitalResidencyCa
     return purpose.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
 
+  const printCard = () => {
+    // Create print container
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-container';
+    printContainer.innerHTML = `
+      <style>
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          body * {
+            visibility: hidden;
+          }
+          #print-container, #print-container * {
+            visibility: visible;
+          }
+          #print-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+        @media screen {
+          #print-container {
+            display: none;
+          }
+        }
+        .id-card-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 15mm;
+          width: 100%;
+          height: 100%;
+          padding: 10mm;
+          box-sizing: border-box;
+          background: #f8f9fa;
+        }
+        .card-label {
+          position: absolute;
+          top: -8mm;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 8pt;
+          font-weight: bold;
+          color: #333;
+          background: white;
+          padding: 2mm 6mm;
+          border-radius: 2mm;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.1);
+        }
+        .id-card-front, .id-card-back {
+          width: 85.6mm;
+          height: 53.98mm;
+          background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 50%, #f8f9fa 100%);
+          color: #000000;
+          padding: 0;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          font-family: 'Arial', 'Helvetica', 'Segoe UI', sans-serif;
+          position: relative;
+          page-break-inside: avoid;
+          border-radius: 3mm;
+          box-shadow: 0 3mm 6mm rgba(0,0,0,0.25), 0 1mm 2mm rgba(0,0,0,0.15);
+          border: 2px solid #003366;
+          overflow: hidden;
+        }
+        .id-card-back {
+          background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 50%, #f8f9fa 100%);
+        }
+        /* Enhanced Security Pattern Background */
+        .id-card-front::before, .id-card-back::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            repeating-linear-gradient(45deg, transparent, transparent 1.5px, rgba(0,51,102,0.04) 1.5px, rgba(0,51,102,0.04) 3px),
+            repeating-linear-gradient(-45deg, transparent, transparent 1.5px, rgba(0,51,102,0.04) 1.5px, rgba(0,51,102,0.04) 3px),
+            radial-gradient(circle at 20% 30%, rgba(0,51,102,0.02) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(0,51,102,0.02) 0%, transparent 50%);
+          pointer-events: none;
+          z-index: 0;
+        }
+        /* Holographic Effect */
+        .id-card-front::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 8mm;
+          background: linear-gradient(90deg, 
+            rgba(255,255,255,0.3) 0%, 
+            rgba(0,51,102,0.2) 25%, 
+            rgba(255,255,255,0.3) 50%, 
+            rgba(0,51,102,0.2) 75%, 
+            rgba(255,255,255,0.3) 100%);
+          pointer-events: none;
+          z-index: 2;
+          opacity: 0.6;
+        }
+        /* Enhanced Blue Header Bar */
+        .id-header-bar {
+          background: linear-gradient(135deg, #003366 0%, #004080 50%, #003366 100%);
+          color: #ffffff;
+          padding: 3mm 4mm;
+          box-sizing: border-box;
+          position: relative;
+          z-index: 1;
+          border-bottom: 2px solid #001f3f;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.2) inset;
+        }
+        .id-header-bar::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        }
+        .id-header-title {
+          font-size: 7.5pt;
+          font-weight: 900;
+          letter-spacing: 1pt;
+          margin: 0;
+          line-height: 1.2;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          text-transform: uppercase;
+        }
+        .id-header-subtitle {
+          font-size: 6.5pt;
+          font-weight: 600;
+          margin: 0.8mm 0 0 0;
+          opacity: 0.98;
+          letter-spacing: 0.3pt;
+        }
+        /* Enhanced Card Body */
+        .id-card-body {
+          display: flex;
+          flex: 1;
+          padding: 3.5mm 4mm;
+          box-sizing: border-box;
+          position: relative;
+          z-index: 1;
+          background: rgba(255,255,255,0.7);
+        }
+        .id-photo-section {
+          width: 24mm;
+          margin-right: 4.5mm;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .id-card-body[dir="rtl"] .id-photo-section {
+          margin-right: 0;
+          margin-left: 4.5mm;
+        }
+        .id-photo {
+          width: 24mm;
+          height: 30mm;
+          border: 2px solid #003366;
+          border-radius: 2mm;
+          object-fit: cover;
+          background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+          display: block;
+          box-shadow: 0 1.5mm 3mm rgba(0,0,0,0.2), inset 0 0 2mm rgba(0,51,102,0.1);
+          position: relative;
+        }
+        .id-photo::after {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          border: 1px solid rgba(255,255,255,0.5);
+          border-radius: 2mm;
+          pointer-events: none;
+        }
+        .id-info-section {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .id-field {
+          margin-bottom: 1.8mm;
+          padding-bottom: 1.2mm;
+          border-bottom: 0.5px solid rgba(0,51,102,0.1);
+        }
+        .id-field:last-of-type {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+        .id-label {
+          font-size: 5.5pt;
+          color: #003366;
+          margin-bottom: 0.8mm;
+          text-transform: uppercase;
+          font-weight: 700;
+          letter-spacing: 0.5pt;
+          font-family: 'Arial', sans-serif;
+        }
+        .id-value {
+          font-size: 7.5pt;
+          font-weight: 600;
+          color: #000000;
+          line-height: 1.4;
+          word-break: break-word;
+          font-family: 'Arial', 'Helvetica', sans-serif;
+        }
+        .id-signature-section {
+          margin-top: 2.5mm;
+          padding-top: 2.5mm;
+          border-top: 1.5px solid #003366;
+          background: rgba(255,255,255,0.5);
+          padding-left: 1mm;
+          padding-right: 1mm;
+          border-radius: 1mm;
+        }
+        .id-signature-label {
+          font-size: 5pt;
+          color: #003366;
+          text-transform: uppercase;
+          margin-bottom: 1.2mm;
+          font-weight: 700;
+          letter-spacing: 0.3pt;
+        }
+        .id-signature-line {
+          height: 9mm;
+          border-bottom: 2px solid #000000;
+          width: 100%;
+          background: linear-gradient(to right, transparent, rgba(0,0,0,0.05), transparent);
+        }
+        /* Enhanced Footer with Seal and QR */
+        .id-card-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          padding: 2.5mm 4mm;
+          box-sizing: border-box;
+          border-top: 2px solid #003366;
+          position: relative;
+          z-index: 1;
+          background: rgba(255,255,255,0.8);
+          box-shadow: 0 -1mm 2mm rgba(0,0,0,0.1) inset;
+        }
+        .id-card-footer[dir="rtl"] {
+          flex-direction: row-reverse;
+        }
+        .id-seal {
+          width: 14mm;
+          height: 14mm;
+          border: 2.5px solid #003366;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+          flex-shrink: 0;
+          box-shadow: 0 1.5mm 3mm rgba(0,0,0,0.2), inset 0 0 2mm rgba(0,51,102,0.1);
+          position: relative;
+        }
+        .id-seal::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 8mm;
+          height: 8mm;
+          border: 1px solid #003366;
+          border-radius: 50%;
+        }
+        .id-seal-text {
+          font-size: 4pt;
+          color: #003366;
+          text-align: center;
+          font-weight: 900;
+          line-height: 1.2;
+          padding: 0.5mm;
+          z-index: 1;
+          position: relative;
+        }
+        .id-footer-info {
+          flex: 1;
+          margin: 0 3.5mm;
+        }
+        .id-ref {
+          font-size: 6.5pt;
+          font-weight: 900;
+          font-family: 'Courier New', 'Consolas', monospace;
+          color: #003366;
+          margin-bottom: 0.8mm;
+          letter-spacing: 0.5pt;
+        }
+        .id-validity {
+          font-size: 5.5pt;
+          color: #003366;
+          font-weight: 600;
+        }
+        .id-qr {
+          width: 14mm;
+          height: 14mm;
+          background: #ffffff;
+          padding: 1.5mm;
+          border: 2px solid #003366;
+          border-radius: 2mm;
+          flex-shrink: 0;
+          box-shadow: 0 1mm 2mm rgba(0,0,0,0.15), inset 0 0 1mm rgba(0,51,102,0.1);
+        }
+        .id-qr img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .id-back-content {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          justify-content: space-between;
+          padding: 4.5mm;
+          box-sizing: border-box;
+          position: relative;
+          z-index: 1;
+          background: rgba(255,255,255,0.7);
+        }
+        .id-back-header {
+          text-align: center;
+          margin-bottom: 3.5mm;
+          padding-bottom: 2mm;
+          border-bottom: 2px solid #003366;
+        }
+        .id-back-title {
+          font-size: 7.5pt;
+          font-weight: 900;
+          color: #003366;
+          margin-bottom: 1mm;
+          text-transform: uppercase;
+          letter-spacing: 0.5pt;
+        }
+        .id-back-subtitle {
+          font-size: 6.5pt;
+          color: #003366;
+          font-weight: 600;
+        }
+        .id-back-qr {
+          text-align: center;
+          margin: 3.5mm 0;
+        }
+        .id-back-qr-box {
+          width: 28mm;
+          height: 28mm;
+          background: #ffffff;
+          padding: 2.5mm;
+          border: 2.5px solid #003366;
+          border-radius: 3mm;
+          margin: 0 auto;
+          box-shadow: 0 2mm 4mm rgba(0,0,0,0.2), inset 0 0 2mm rgba(0,51,102,0.1);
+          position: relative;
+        }
+        .id-back-qr-box::before {
+          content: '';
+          position: absolute;
+          top: -2.5px;
+          left: -2.5px;
+          right: -2.5px;
+          bottom: -2.5px;
+          border: 1px solid rgba(255,255,255,0.5);
+          border-radius: 3mm;
+          pointer-events: none;
+        }
+        .id-back-qr-box img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .id-back-info {
+          font-size: 5.5pt;
+          text-align: center;
+          color: #003366;
+          line-height: 1.6;
+          margin: 2.5mm 0;
+          font-weight: 600;
+        }
+        .id-back-official {
+          font-size: 5pt;
+          text-align: center;
+          color: #003366;
+          font-style: italic;
+          margin-top: 2.5mm;
+          padding: 1.5mm;
+          background: rgba(0,51,102,0.05);
+          border-radius: 1mm;
+          border: 1px solid rgba(0,51,102,0.2);
+        }
+        .id-back-watermark {
+          font-size: 4.5pt;
+          text-align: center;
+          color: #003366;
+          margin-top: auto;
+          padding-top: 2.5mm;
+          border-top: 1.5px solid #003366;
+          font-weight: 600;
+        }
+      </style>
+      <div class="id-card-container">
+        <div style="position: relative;">
+          <div class="card-label">${t('cardFront')}</div>
+          <div class="id-card-front" dir="${isRTL ? 'rtl' : 'ltr'}">
+            <!-- Blue Header -->
+            <div class="id-header-bar">
+              <div class="id-header-title">${t('permitType').toUpperCase()}</div>
+              <div class="id-header-subtitle">${t('title')}</div>
+            </div>
+            
+            <!-- Card Body -->
+            <div class="id-card-body" dir="${isRTL ? 'rtl' : 'ltr'}">
+              <!-- Photo Section -->
+              <div class="id-photo-section">
+                ${application.photoUrl ? `<img src="${application.photoUrl}" alt="Photo" class="id-photo" />` : '<div class="id-photo"></div>'}
+              </div>
+              
+              <!-- Information Section -->
+              <div class="id-info-section">
+                <div>
+                  <div class="id-field">
+                    <div class="id-label">${t('fullName')}</div>
+                    <div class="id-value">${application.fullName}</div>
+                  </div>
+                  <div class="id-field">
+                    <div class="id-label">${t('nationalId')}</div>
+                    <div class="id-value">${application.nationalId}</div>
+                  </div>
+                  <div class="id-field">
+                    <div class="id-label">${t('dateOfBirth')}</div>
+                    <div class="id-value">${formatDate(application.dateOfBirth)}</div>
+                  </div>
+                  <div class="id-field">
+                    <div class="id-label">${t('nationality')}</div>
+                    <div class="id-value">${application.nationality}</div>
+                  </div>
+                  <div class="id-field">
+                    <div class="id-label">${t('destination')}</div>
+                    <div class="id-value">${application.destinationGovernorate || 'N/A'}</div>
+                  </div>
+                  <div class="id-field">
+                    <div class="id-label">${t('purpose')}</div>
+                    <div class="id-value">${formatPurpose(application.visitPurpose)}</div>
+                  </div>
+                </div>
+                
+                <!-- Signature Section -->
+                <div class="id-signature-section">
+                  <div class="id-signature-label">Signature</div>
+                  <div class="id-signature-line"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Footer with Seal, Reference, and QR -->
+            <div class="id-card-footer" dir="${isRTL ? 'rtl' : 'ltr'}">
+              <div class="id-seal">
+                <div class="id-seal-text">KRG<br/>${new Date().getFullYear()}</div>
+              </div>
+              <div class="id-footer-info">
+                <div class="id-ref">ID# ${application.referenceNumber}</div>
+                <div class="id-validity">Expires: ${formatDate(application.visitEndDate)}</div>
+              </div>
+              ${application.qrCode ? `<div class="id-qr"><img src="${application.qrCode}" alt="QR" /></div>` : '<div class="id-qr"></div>'}
+            </div>
+          </div>
+        </div>
+        
+        <div style="position: relative;">
+          <div class="card-label">${t('cardBack')}</div>
+          <div class="id-card-back" dir="${isRTL ? 'rtl' : 'ltr'}">
+            <div class="id-back-content">
+              <div class="id-back-header">
+                <div class="id-back-title">${t('permitType')}</div>
+                <div class="id-back-subtitle">${t('title')}</div>
+              </div>
+              
+              <div class="id-back-qr">
+                ${application.qrCode ? `<div class="id-back-qr-box"><img src="${application.qrCode}" alt="QR Code" /></div>` : '<div class="id-back-qr-box"></div>'}
+              </div>
+              
+              <div class="id-back-info">
+                <div style="font-weight: bold; margin-bottom: 1.5mm; color: #003366;">${t('officialText')}</div>
+                <div style="margin-bottom: 1mm;">${t('verifyUrl')}</div>
+                <div style="font-size: 4.5pt; color: #666666;">
+                  ${application.approvalDate ? `Approved: ${formatDateShort(application.approvalDate)}` : ''}
+                </div>
+              </div>
+              
+              <div class="id-back-official">
+                This is an official document issued by the Kurdistan Regional Government
+              </div>
+              
+              <div class="id-back-watermark">
+                Valid from ${formatDate(application.visitStartDate)} to ${formatDate(application.visitEndDate)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(printContainer);
+    
+    // Trigger print
+    window.print();
+    
+    // Clean up after print
+    setTimeout(() => {
+      document.body.removeChild(printContainer);
+    }, 1000);
+  }
+
+
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Digital Card Preview */}
@@ -240,8 +773,8 @@ export default function DigitalResidencyCard({ application }: DigitalResidencyCa
         </div>
       </div>
 
-      {/* Download Buttons */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? 'md:grid-flow-row-dense' : ''}`}>
+      {/* Download and Print Buttons */}
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${isRTL ? 'md:grid-flow-row-dense' : ''}`}>
         <button
           onClick={downloadAsImage}
           className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -259,6 +792,15 @@ export default function DigitalResidencyCard({ application }: DigitalResidencyCa
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
           {t('downloadPDF')}
+        </button>
+        <button
+          onClick={printCard}
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          {t('printCard')}
         </button>
       </div>
 
@@ -291,4 +833,5 @@ export default function DigitalResidencyCard({ application }: DigitalResidencyCa
     </div>
   )
 }
+
 
